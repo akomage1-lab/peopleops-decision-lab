@@ -2,15 +2,15 @@
 
 ## Purpose and scope
 
-M1 is a six-month mathematical proof of concept for an aggregate workforce decision: given current workforce, expected attrition, staffing targets, lead times, in-flight hires, recruiting capacity, and incremental budget, recommend hiring starts that reduce expected staffing shortages. It is not a people-management system and does not make individual-level recommendations.
+M1 is a six-month mathematical proof of concept for an aggregate workforce decision: given current workforce, expected attrition, staffing targets, lead times, in-flight hires, recruiting capacity, and a planning-period incremental workforce budget, recommend hiring starts that reduce expected staffing shortages. It is not a people-management system and does not make individual-level recommendations.
 
 ## Frozen planning inputs
 
 The planning grain is **Department × Role × Month**. M1 fixes the horizon at six months.
 
-Each department/role provides current FTE, annual expected attrition rate, six monthly staffing targets, an integer hiring lead time in months, loaded monthly cost for a new hire, and nonnegative whole in-flight hires indexed by their in-horizon arrival month. A scenario provides nonnegative incremental budget and a nonnegative whole recruiting-start capacity for each of the six months.
+Each department/role provides current FTE, annual expected attrition rate, six monthly staffing targets, an integer hiring lead time in months, loaded monthly cost for a new hire, and nonnegative whole in-flight hires indexed by their in-horizon arrival month. A scenario provides a nonnegative planning-period incremental workforce budget and a nonnegative whole recruiting-start capacity for each of the six months.
 
-Inputs must be finite and nonnegative where applicable. Annual attrition is validated as `0 <= a < 1`; role lead times are nonnegative integers; targets, costs, FTE, and budget cannot be negative. M1 rejects in-flight arrivals outside the horizon.
+Inputs must be finite and nonnegative where applicable. Annual attrition is validated as `0 <= a < 1`; role lead times are nonnegative integers; targets, costs, FTE, and the planning-period incremental workforce budget cannot be negative. M1 rejects in-flight arrivals outside the horizon.
 
 ## Forecast contract
 
@@ -40,9 +40,9 @@ For a hire arriving in month `a`, incremental cost is:
 
 `monthly_loaded_cost[r] * (6 - a)`
 
-This charges only the months the optimized hire is expected to have joined inside M1. It excludes both existing workforce cost and in-flight-hire cost.
+This charges only the months the optimized hire is expected to have joined inside M1. Thus, the planning-period incremental workforce budget represents incremental workforce/payroll spend occurring inside the six-month horizon. It excludes both existing workforce cost and in-flight-hire cost.
 
-Constraints are: total incremental cost does not exceed budget; starts are whole people; every role lead time is respected; starts in any decision month do not exceed scenario recruiting capacity; and only arrivals inside the horizon are representable.
+Constraints are: total incremental cost does not exceed the planning-period incremental workforce budget; starts are whole people; every role lead time is respected; starts in any decision month do not exceed scenario recruiting capacity; and only arrivals inside the horizon are representable. After the second pass, the recomputed forecast total is checked against the first-pass optimum plus the same documented tolerance.
 
 ## Solver contract
 

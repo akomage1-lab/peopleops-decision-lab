@@ -57,7 +57,10 @@ def main() -> None:
 
     print("PeopleOps Decision Lab — M1 demo")
     print(f"Planning horizon: {scenario.horizon_months} months")
-    print(f"Incremental hiring budget: {_format_currency(scenario.hiring_budget)}")
+    print(
+        "Planning-period incremental workforce budget: "
+        f"{_format_currency(scenario.hiring_budget)}"
+    )
     print("Baseline projected shortages (FTE by month 1–6):")
     for role in scenario.roles:
         shortages = baseline.by_role[role.key].shortages
@@ -77,7 +80,10 @@ def main() -> None:
             f"in-horizon cost {_format_currency(recommendation.incremental_cost)}"
         )
     improvement = baseline.total_understaffed_fte_months - result.total_understaffed_fte_months
-    print(f"Budget used: {_format_currency(result.budget_used)}")
+    print(
+        "Planning-period incremental workforce spend used: "
+        f"{_format_currency(result.budget_used)}"
+    )
     print(f"Optimized understaffed FTE-months: {result.total_understaffed_fte_months:.3f}")
     print(f"Improvement versus baseline: {improvement:.3f} understaffed FTE-months")
     print(f"Solver: {result.solver_name}")

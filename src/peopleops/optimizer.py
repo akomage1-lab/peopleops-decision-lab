@@ -177,6 +177,14 @@ def optimize_hiring_plan(scenario: Scenario) -> OptimizationResult:
 
     forecast = forecast_workforce(scenario, plan)
     budget_used = sum(recommendation.incremental_cost for recommendation in recommendations)
+    if (
+        forecast.total_understaffed_fte_months
+        > primary_optimum + PRIMARY_OBJECTIVE_TOLERANCE
+    ):
+        raise SolverFailure(
+            "Secondary optimization did not preserve the primary understaffing "
+            "optimum within the documented numerical tolerance."
+        )
     return OptimizationResult(
         solver_name=solver_name,
         primary_status=_status_name(primary_status_code),
