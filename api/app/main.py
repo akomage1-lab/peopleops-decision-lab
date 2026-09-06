@@ -16,13 +16,24 @@ from .analytics import workforce_history, workforce_summary
 from .database import get_session
 from .forecast_service import ForecastInputError, production_baseline_forecast
 from .models import ScenarioRecord
+from .optimization_service import (
+    ProductionOptimizationFailure,
+    ProductionOptimizationInputError,
+    optimize_production_workforce,
+)
 from .schemas import (
     DepartmentMetricResponse,
     DepartmentForecastMonthResponse,
     OptimizeRequest,
     OptimizeResponse,
     OrganizationForecastMonthResponse,
+    ProductionHiringRecommendationResponse,
     ProductionForecastResponse,
+    ProductionOptimizationDepartmentMonthResponse,
+    ProductionOptimizationOrganizationMonthResponse,
+    ProductionOptimizationRoleMonthResponse,
+    ProductionOptimizeRequest,
+    ProductionOptimizeResponse,
     RoleForecastMonthResponse,
     RoleForecastProvenanceResponse,
     ScenarioResponse,
@@ -126,6 +137,72 @@ def create_app() -> FastAPI:
             role_months=[RoleForecastMonthResponse(**item.__dict__) for item in forecast.role_months],
             department_months=[DepartmentForecastMonthResponse(**item.__dict__) for item in forecast.department_months],
             organization_months=[OrganizationForecastMonthResponse(**item.__dict__) for item in forecast.organization_months],
+        )
+
+    @app.post("/api/workforce/optimize", response_model=ProductionOptimizeResponse)
+    def optimize_production_workforce_endpoint(
+        request: ProductionOptimizeRequest,
+        session: Session = Depends(get_session),
+    ) -> ProductionOptimizeResponse:
+        try:
+            result = optimize_production_workforce(
+                session,
+                request.planning_period_incremental_workforce_budget,
+                request.monthly_recruiting_capacity,
+            )
+        except ProductionOptimizationInputError as error:
+            raise HTTPException(status_code=422, detail=str(error))
+        except ProductionOptimizationFailure:
+            raise HTTPException(
+                status_code=503,
+                detail="The production optimizer did not return a proven optimal plan.",
+            )
+        return ProductionOptimizeResponse(
+            generated_at=result.generated_at,
+            model_version=result.model_version,
+            observation_date=result.observation_date,
+            planning_horizon_months=result.planning_horizon_months,
+            submitted_budget=result.submitted_budget,
+            submitted_monthly_recruiting_capacity=list(result.submitted_monthly_recruiting_capacity),
+            solver=result.solver,
+            primary_status=result.primary_status,
+            secondary_status=result.secondary_status,
+            optimization_duration_ms=result.optimization_duration_ms,
+            baseline_understaffed_fte_months=result.baseline_understaffed_fte_months,
+            baseline_role_months=[
+                ProductionOptimizationRoleMonthResponse(**item.__dict__)
+                for item in result.baseline_role_months
+            ],
+            baseline_department_months=[
+                ProductionOptimizationDepartmentMonthResponse(**item.__dict__)
+                for item in result.baseline_department_months
+            ],
+            baseline_organization_months=[
+                ProductionOptimizationOrganizationMonthResponse(**item.__dict__)
+                for item in result.baseline_organization_months
+            ],
+            optimized_understaffed_fte_months=result.optimized_understaffed_fte_months,
+            improvement_understaffed_fte_months=result.improvement_understaffed_fte_months,
+            planning_period_incremental_workforce_spend_used=(
+                result.planning_period_incremental_workforce_spend_used
+            ),
+            unused_budget=result.unused_budget,
+            recommendations=[
+                ProductionHiringRecommendationResponse(**item.__dict__)
+                for item in result.recommendations
+            ],
+            optimized_role_months=[
+                ProductionOptimizationRoleMonthResponse(**item.__dict__)
+                for item in result.optimized_role_months
+            ],
+            optimized_department_months=[
+                ProductionOptimizationDepartmentMonthResponse(**item.__dict__)
+                for item in result.optimized_department_months
+            ],
+            optimized_organization_months=[
+                ProductionOptimizationOrganizationMonthResponse(**item.__dict__)
+                for item in result.optimized_organization_months
+            ],
         )
 
     return app

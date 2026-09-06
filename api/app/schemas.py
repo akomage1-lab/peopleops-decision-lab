@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from math import isfinite
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ScenarioRoleResponse(BaseModel):
@@ -155,3 +156,87 @@ class ProductionForecastResponse(BaseModel):
     role_months: List[RoleForecastMonthResponse]
     department_months: List[DepartmentForecastMonthResponse]
     organization_months: List[OrganizationForecastMonthResponse]
+
+
+class ProductionOptimizeRequest(BaseModel):
+    """Explicit, transient organization-wide constraints for a production solve."""
+
+    planning_period_incremental_workforce_budget: float = Field(ge=0)
+    monthly_recruiting_capacity: List[int] = Field(min_length=6, max_length=6)
+
+    @field_validator("planning_period_incremental_workforce_budget")
+    @classmethod
+    def budget_must_be_finite(cls, value: float) -> float:
+        if not isfinite(value):
+            raise ValueError("planning_period_incremental_workforce_budget must be finite.")
+        return value
+
+    @field_validator("monthly_recruiting_capacity")
+    @classmethod
+    def capacities_must_be_nonnegative(cls, values: List[int]) -> List[int]:
+        if any(capacity < 0 for capacity in values):
+            raise ValueError("monthly_recruiting_capacity values must be nonnegative.")
+        return values
+
+
+class ProductionOptimizationRoleMonthResponse(BaseModel):
+    role_id: int
+    department_id: int
+    department: str
+    role: str
+    month: date
+    expected_fte: float
+    staffing_target: float
+    staffing_shortage: float
+
+
+class ProductionOptimizationDepartmentMonthResponse(BaseModel):
+    department_id: int
+    department: str
+    month: date
+    expected_fte: float
+    staffing_target: float
+    staffing_shortage: float
+
+
+class ProductionOptimizationOrganizationMonthResponse(BaseModel):
+    month: date
+    expected_fte: float
+    staffing_target: float
+    staffing_shortage: float
+
+
+class ProductionHiringRecommendationResponse(BaseModel):
+    role_id: int
+    department_id: int
+    department: str
+    role: str
+    hires: int
+    decision_month: int
+    arrival_month: int
+    planning_period_incremental_workforce_spend: float
+
+
+class ProductionOptimizeResponse(BaseModel):
+    generated_at: datetime
+    model_version: str
+    observation_date: date
+    planning_horizon_months: int
+    submitted_budget: float
+    submitted_monthly_recruiting_capacity: List[int]
+    solver: str
+    primary_status: str
+    secondary_status: str
+    optimization_duration_ms: float
+    baseline_understaffed_fte_months: float
+    baseline_role_months: List[ProductionOptimizationRoleMonthResponse]
+    baseline_department_months: List[ProductionOptimizationDepartmentMonthResponse]
+    baseline_organization_months: List[ProductionOptimizationOrganizationMonthResponse]
+    optimized_understaffed_fte_months: float
+    improvement_understaffed_fte_months: float
+    planning_period_incremental_workforce_spend_used: float
+    unused_budget: float
+    recommendations: List[ProductionHiringRecommendationResponse]
+    optimized_role_months: List[ProductionOptimizationRoleMonthResponse]
+    optimized_department_months: List[ProductionOptimizationDepartmentMonthResponse]
+    optimized_organization_months: List[ProductionOptimizationOrganizationMonthResponse]
