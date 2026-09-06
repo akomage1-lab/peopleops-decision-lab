@@ -41,6 +41,20 @@ const optimized = {
   recommendations: [{ role_id: 5, department_id: 2, department: "Sales", role: "Sales Development Representative", hires: 2, decision_month: 1, arrival_month: 2, planning_period_incremental_workforce_spend: 75000 }],
   optimized_role_months: scenario.role_months, optimized_department_months: scenario.department_months, optimized_organization_months: scenario.organization_months
 };
+const sensitivity = {
+  generated_at: "2026-01-01T00:00:01Z", model_version: "m1-production-optimizer-v1-m11-sensitivity-v1", submitted_budget: 150000, submitted_monthly_recruiting_capacity: [2, 2, 2, 2, 2, 2], sensitivity_execution_duration_ms: 95,
+  budget_sensitivity: [
+    { budget: 75000, optimized_understaffed_fte_months: 121.57, planning_period_incremental_workforce_spend_used: 75000, unused_budget: 0, total_optimizer_selected_hires: 1, primary_status: "OPTIMAL", secondary_status: "OPTIMAL", optimization_duration_ms: 10 },
+    { budget: 112500, optimized_understaffed_fte_months: 115.57, planning_period_incremental_workforce_spend_used: 112500, unused_budget: 0, total_optimizer_selected_hires: 2, primary_status: "OPTIMAL", secondary_status: "OPTIMAL", optimization_duration_ms: 11 },
+    { budget: 150000, optimized_understaffed_fte_months: 111.57, planning_period_incremental_workforce_spend_used: 150000, unused_budget: 0, total_optimizer_selected_hires: 2, primary_status: "OPTIMAL", secondary_status: "OPTIMAL", optimization_duration_ms: 12 },
+    { budget: 187500, optimized_understaffed_fte_months: 109.57, planning_period_incremental_workforce_spend_used: 180000, unused_budget: 7500, total_optimizer_selected_hires: 3, primary_status: "OPTIMAL", secondary_status: "OPTIMAL", optimization_duration_ms: 13 }
+  ],
+  recruiting_capacity_sensitivity: [
+    { monthly_recruiting_capacity: [1, 1, 1, 1, 1, 1], monthly_recruiting_capacity_delta: [-1, -1, -1, -1, -1, -1], optimized_understaffed_fte_months: 114.57, planning_period_incremental_workforce_spend_used: 150000, total_optimizer_selected_hires: 2, primary_status: "OPTIMAL", secondary_status: "OPTIMAL", optimization_duration_ms: 14 },
+    { monthly_recruiting_capacity: [2, 2, 2, 2, 2, 2], monthly_recruiting_capacity_delta: [0, 0, 0, 0, 0, 0], optimized_understaffed_fte_months: 111.57, planning_period_incremental_workforce_spend_used: 150000, total_optimizer_selected_hires: 2, primary_status: "OPTIMAL", secondary_status: "OPTIMAL", optimization_duration_ms: 15 },
+    { monthly_recruiting_capacity: [3, 3, 3, 3, 3, 3], monthly_recruiting_capacity_delta: [1, 1, 1, 1, 1, 1], optimized_understaffed_fte_months: 106.57, planning_period_incremental_workforce_spend_used: 150000, total_optimizer_selected_hires: 3, primary_status: "OPTIMAL", secondary_status: "OPTIMAL", optimization_duration_ms: 16 }
+  ]
+};
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -120,6 +134,43 @@ describe("M6 Decision Lab", () => {
     expect(screen.queryByText(/receives the largest displayed allocation because/)).not.toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "Jan 2026" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "Feb 2026" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Analyze constraint sensitivity" })).toBeInTheDocument();
+  });
+
+  it("runs bounded sensitivity with the current transient constraints and preserves an optimization on failure", async () => {
+    const fetchMock = mockFetch(jsonResponse(baseline), jsonResponse(scenario), jsonResponse(optimized), jsonResponse(sensitivity));
+    render(<App />);
+    await screen.findByRole("heading", { name: "Baseline forecast: the unchanged demo plan" });
+    expect(screen.queryByRole("button", { name: "Analyze constraint sensitivity" })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Annual expected attrition"), { target: { value: "18" } });
+    fireEvent.click(screen.getByRole("button", { name: "Run Scenario" }));
+    await screen.findByText("Scenario active");
+    fireEvent.click(screen.getByRole("button", { name: "Optimize Scenario" }));
+    await screen.findByRole("button", { name: "Analyze constraint sensitivity" });
+    fireEvent.click(screen.getByRole("button", { name: "Analyze constraint sensitivity" }));
+    expect(await screen.findByRole("heading", { name: "Budget frontier" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Recruiting-capacity sensitivity" })).toBeInTheDocument();
+    expect(screen.getByText("Submitted budget")).toBeInTheDocument();
+    expect(screen.getByText("Submitted")).toBeInTheDocument();
+    expect(screen.getByText(/reduces optimized understaffing by 5.0 FTE-months.*reduces it by 2.0 FTE-months/)).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenLastCalledWith("/api/workforce/scenario/sensitivity", expect.objectContaining({ body: expect.stringContaining("0.18") }));
+    const lastCall = fetchMock.mock.calls[fetchMock.mock.calls.length - 1];
+    expect(JSON.parse(String(lastCall[1]?.body))).toMatchObject({ planning_period_incremental_workforce_budget: 150000, monthly_recruiting_capacity: [2, 2, 2, 2, 2, 2] });
+    fireEvent.change(screen.getByLabelText("Company-wide optimizer budget (USD)"), { target: { value: "160000" } });
+    expect(screen.queryByRole("heading", { name: "Constraint sensitivity" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the successful optimized plan visible if sensitivity fails", async () => {
+    mockFetch(jsonResponse(baseline), jsonResponse(scenario), jsonResponse(optimized), jsonResponse({ detail: "Sensitivity service unavailable." }, 503));
+    render(<App />);
+    await screen.findByRole("heading", { name: "Baseline forecast: the unchanged demo plan" });
+    fireEvent.click(screen.getByRole("button", { name: "Run Scenario" }));
+    await screen.findByText("Scenario active");
+    fireEvent.click(screen.getByRole("button", { name: "Optimize Scenario" }));
+    await screen.findByRole("heading", { name: "Recommended hire starts and arrivals" });
+    fireEvent.click(screen.getByRole("button", { name: "Analyze constraint sensitivity" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Sensitivity service unavailable.");
+    expect(screen.getByRole("heading", { name: "Recommended hire starts and arrivals" })).toBeInTheDocument();
   });
 
   it("resets changed inputs to the persisted baseline assumptions", async () => {

@@ -167,6 +167,38 @@ export interface ScenarioOptimizationRequest {
   role_overrides: ScenarioRoleOverride[];
 }
 
+export interface BudgetSensitivityPoint {
+  budget: number;
+  optimized_understaffed_fte_months: number;
+  planning_period_incremental_workforce_spend_used: number;
+  unused_budget: number;
+  total_optimizer_selected_hires: number;
+  primary_status: string;
+  secondary_status: string;
+  optimization_duration_ms: number;
+}
+
+export interface RecruitingCapacitySensitivityPoint {
+  monthly_recruiting_capacity: number[];
+  monthly_recruiting_capacity_delta: number[];
+  optimized_understaffed_fte_months: number;
+  planning_period_incremental_workforce_spend_used: number;
+  total_optimizer_selected_hires: number;
+  primary_status: string;
+  secondary_status: string;
+  optimization_duration_ms: number;
+}
+
+export interface ConstraintSensitivityResult {
+  generated_at: string;
+  model_version: string;
+  submitted_budget: number;
+  submitted_monthly_recruiting_capacity: number[];
+  budget_sensitivity: BudgetSensitivityPoint[];
+  recruiting_capacity_sensitivity: RecruitingCapacitySensitivityPoint[];
+  sensitivity_execution_duration_ms: number;
+}
+
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
 const API_BASE_URL = configuredApiBaseUrl ? configuredApiBaseUrl.replace(/\/+$/, "") : "";
 
@@ -197,6 +229,14 @@ export function forecastScenario(roleOverrides: ScenarioRoleOverride[]): Promise
 
 export function optimizeScenario(request: ScenarioOptimizationRequest): Promise<ProductionOptimizationResult> {
   return requestJson<ProductionOptimizationResult>("/api/workforce/scenario/optimize", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request)
+  });
+}
+
+export function analyzeConstraintSensitivity(request: ScenarioOptimizationRequest): Promise<ConstraintSensitivityResult> {
+  return requestJson<ConstraintSensitivityResult>("/api/workforce/scenario/sensitivity", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request)

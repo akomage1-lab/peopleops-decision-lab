@@ -30,7 +30,9 @@ from .optimization_service import (
     optimize_production_workforce,
 )
 from .overview_service import production_workforce_overview
+from .sensitivity_service import analyze_constraint_sensitivity
 from .schemas import (
+    BudgetSensitivityPointResponse,
     DepartmentMetricResponse,
     DepartmentForecastMonthResponse,
     OptimizeRequest,
@@ -46,6 +48,9 @@ from .schemas import (
     ProductionScenarioForecastRequest,
     ProductionScenarioForecastResponse,
     ProductionScenarioOptimizeRequest,
+    ProductionScenarioSensitivityRequest,
+    ProductionScenarioSensitivityResponse,
+    RecruitingCapacitySensitivityPointResponse,
     RoleForecastMonthResponse,
     RoleForecastProvenanceResponse,
     ScenarioResponse,
@@ -415,6 +420,63 @@ def create_app() -> FastAPI:
                 ProductionOptimizationOrganizationMonthResponse(**item.__dict__)
                 for item in result.optimized_organization_months
             ],
+        )
+
+    @app.post(
+        "/api/workforce/scenario/sensitivity",
+        response_model=ProductionScenarioSensitivityResponse,
+    )
+    def analyze_transient_scenario_sensitivity(
+        request: ProductionScenarioSensitivityRequest,
+        session: Session = Depends(get_session),
+    ) -> ProductionScenarioSensitivityResponse:
+        overrides = tuple(
+            ProductionRoleOverride(
+                role_id=item.role_id,
+                annual_expected_attrition_rate=item.annual_expected_attrition_rate,
+                staffing_targets=(tuple(item.staffing_targets) if item.staffing_targets is not None else None),
+            )
+            for item in request.role_overrides
+        )
+        try:
+            result = analyze_constraint_sensitivity(
+                session,
+                request.planning_period_incremental_workforce_budget,
+                request.monthly_recruiting_capacity,
+                overrides,
+            )
+        except ProductionOptimizationInputError as error:
+            logger.warning("Transient sensitivity request rejected: %s", error)
+            raise HTTPException(status_code=422, detail=str(error))
+        except ProductionOptimizationFailure as error:
+            logger.error("Transient sensitivity optimization failed", exc_info=error)
+            raise HTTPException(
+                status_code=503,
+                detail="The production optimizer did not return proven optimal sensitivity results.",
+            )
+        return ProductionScenarioSensitivityResponse(
+            generated_at=result.generated_at,
+            model_version=result.model_version,
+            submitted_budget=result.submitted_budget,
+            submitted_monthly_recruiting_capacity=list(result.submitted_monthly_recruiting_capacity),
+            budget_sensitivity=[
+                BudgetSensitivityPointResponse(**item.__dict__)
+                for item in result.budget_sensitivity
+            ],
+            recruiting_capacity_sensitivity=[
+                RecruitingCapacitySensitivityPointResponse(
+                    monthly_recruiting_capacity=list(item.monthly_recruiting_capacity),
+                    monthly_recruiting_capacity_delta=list(item.monthly_recruiting_capacity_delta),
+                    optimized_understaffed_fte_months=item.optimized_understaffed_fte_months,
+                    planning_period_incremental_workforce_spend_used=item.planning_period_incremental_workforce_spend_used,
+                    total_optimizer_selected_hires=item.total_optimizer_selected_hires,
+                    primary_status=item.primary_status,
+                    secondary_status=item.secondary_status,
+                    optimization_duration_ms=item.optimization_duration_ms,
+                )
+                for item in result.recruiting_capacity_sensitivity
+            ],
+            sensitivity_execution_duration_ms=result.sensitivity_execution_duration_ms,
         )
 
     return app

@@ -10,7 +10,7 @@ PeopleOps Decision Lab is a synthetic, aggregate workforce-planning demo. It hel
 
 The app answers a deliberately narrow question: given current aggregate FTE, planned staffing targets, expected attrition, hiring lead times, a planning-period incremental workforce budget, and monthly recruiting capacity, which hiring starts best reduce in-horizon understaffing?
 
-The **Overview** shows observed aggregate workforce context and a persisted six-month forecast. The **Decision Lab** lets a user change a scenario in the browser, compare baseline and scenario risk, and request an optimized plan. Scenario edits are transient: nothing is written back from the UI.
+The **Overview** shows observed aggregate workforce context and a persisted six-month forecast. The **Decision Lab** lets a user change a scenario in the browser, compare baseline and scenario risk, and request an optimized plan. After an optimized plan, its advanced constraint sensitivity analysis reruns the same proven optimizer over bounded budget and recruiting-capacity changes to show how the optimal understaffing result changes under alternative resource constraints. Scenario edits and sensitivity runs are transient: nothing is written back from the UI.
 
 ## Architecture
 

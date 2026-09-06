@@ -285,6 +285,42 @@ class ProductionScenarioOptimizeRequest(ProductionOptimizeRequest):
     role_overrides: List[ScenarioRoleOverrideRequest] = Field(default_factory=list)
 
 
+class ProductionScenarioSensitivityRequest(ProductionScenarioOptimizeRequest):
+    """Transient scenario context for the fixed M11 local sensitivity sweep."""
+
+
+class BudgetSensitivityPointResponse(BaseModel):
+    budget: float
+    optimized_understaffed_fte_months: float
+    planning_period_incremental_workforce_spend_used: float
+    unused_budget: float
+    total_optimizer_selected_hires: int
+    primary_status: str
+    secondary_status: str
+    optimization_duration_ms: float
+
+
+class RecruitingCapacitySensitivityPointResponse(BaseModel):
+    monthly_recruiting_capacity: List[int]
+    monthly_recruiting_capacity_delta: List[int]
+    optimized_understaffed_fte_months: float
+    planning_period_incremental_workforce_spend_used: float
+    total_optimizer_selected_hires: int
+    primary_status: str
+    secondary_status: str
+    optimization_duration_ms: float
+
+
+class ProductionScenarioSensitivityResponse(BaseModel):
+    generated_at: datetime
+    model_version: str
+    submitted_budget: float
+    submitted_monthly_recruiting_capacity: List[int]
+    budget_sensitivity: List[BudgetSensitivityPointResponse]
+    recruiting_capacity_sensitivity: List[RecruitingCapacitySensitivityPointResponse]
+    sensitivity_execution_duration_ms: float
+
+
 class ProductionScenarioForecastResponse(BaseModel):
     generated_at: datetime
     model_version: str
