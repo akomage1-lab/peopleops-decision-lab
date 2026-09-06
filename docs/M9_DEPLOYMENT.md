@@ -52,7 +52,12 @@ No Docker image, startup-time migration, or startup-time seeding is part of this
    ```
 
    The provider injects `PORT`; the fallback only supports local process checks. The service must not be configured to run migration or seed commands at application startup.
-3. Configure the build command as `python -m pip install .` (or Railway's equivalent standard Python build using the root `pyproject.toml`). The runtime dependencies include FastAPI, Uvicorn, SQLAlchemy, psycopg, and OR-Tools.
+3. Use Railpack's default Python build; do not set a custom build or install
+   command. The committed `uv.lock` makes Railpack use its two-stage `uv`
+   install: cached third-party dependencies first, then the local project after
+   the full source tree is available. `pyproject.toml` remains the authoritative
+   dependency declaration. The runtime dependencies include FastAPI, Uvicorn,
+   SQLAlchemy, psycopg, and OR-Tools.
 4. In Railway Variables, set exactly:
 
    | Variable | Value |
