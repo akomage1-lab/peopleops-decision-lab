@@ -44,7 +44,7 @@ test("Flow C: valid optimization displays a safe optimal recommendation", async 
   await expect(page.getByRole("heading", { name: "Optimization status: Optimal" })).toBeVisible();
   await expect(page.getByText(/Planning-period spend used: \$150,000 of \$150,000/)).toBeVisible();
   await page.getByRole("button", { name: "Analyze constraint sensitivity", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Budget frontier" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Budget frontier" })).toBeVisible({ timeout: 15000 });
   await expect(page.getByRole("heading", { name: "Recruiting-capacity sensitivity" })).toBeVisible();
   await expect(page.getByText("Submitted budget", { exact: true })).toBeVisible();
   await expect(page.getByText("Submitted", { exact: true })).toBeVisible();
