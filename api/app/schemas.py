@@ -6,7 +6,7 @@ from datetime import date, datetime
 from math import isfinite
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class ScenarioRoleResponse(BaseModel):
@@ -110,6 +110,8 @@ class WorkforceHistoryPointResponse(BaseModel):
 
 
 class RoleForecastProvenanceResponse(BaseModel):
+    role_id: int
+    department_id: int
     department: str
     role: str
     observation_date: date
@@ -120,6 +122,8 @@ class RoleForecastProvenanceResponse(BaseModel):
 
 
 class RoleForecastMonthResponse(BaseModel):
+    role_id: int
+    department_id: int
     department: str
     role: str
     month: date
@@ -156,6 +160,7 @@ class ProductionForecastResponse(BaseModel):
     role_months: List[RoleForecastMonthResponse]
     department_months: List[DepartmentForecastMonthResponse]
     organization_months: List[OrganizationForecastMonthResponse]
+    total_understaffed_fte_months: float
 
 
 class ProductionOptimizeRequest(BaseModel):
@@ -240,3 +245,52 @@ class ProductionOptimizeResponse(BaseModel):
     optimized_role_months: List[ProductionOptimizationRoleMonthResponse]
     optimized_department_months: List[ProductionOptimizationDepartmentMonthResponse]
     optimized_organization_months: List[ProductionOptimizationOrganizationMonthResponse]
+
+
+class ScenarioRoleOverrideRequest(BaseModel):
+    """One explicit, transient role-level scenario change."""
+
+    role_id: int = Field(gt=0)
+    annual_expected_attrition_rate: Optional[float] = Field(default=None, ge=0, lt=1)
+    staffing_targets: Optional[List[float]] = Field(default=None, min_length=6, max_length=6)
+
+    @field_validator("annual_expected_attrition_rate")
+    @classmethod
+    def attrition_must_be_finite(cls, value: Optional[float]) -> Optional[float]:
+        if value is not None and not isfinite(value):
+            raise ValueError("annual_expected_attrition_rate must be finite.")
+        return value
+
+    @field_validator("staffing_targets")
+    @classmethod
+    def targets_must_be_finite_and_nonnegative(
+        cls, values: Optional[List[float]]
+    ) -> Optional[List[float]]:
+        if values is not None and any(not isfinite(value) or value < 0 for value in values):
+            raise ValueError("staffing_targets must contain finite nonnegative values.")
+        return values
+
+    @model_validator(mode="after")
+    def must_change_an_assumption(self) -> "ScenarioRoleOverrideRequest":
+        if self.annual_expected_attrition_rate is None and self.staffing_targets is None:
+            raise ValueError("A scenario role override must include attrition or staffing targets.")
+        return self
+
+
+class ProductionScenarioForecastRequest(BaseModel):
+    role_overrides: List[ScenarioRoleOverrideRequest] = Field(default_factory=list)
+
+
+class ProductionScenarioOptimizeRequest(ProductionOptimizeRequest):
+    role_overrides: List[ScenarioRoleOverrideRequest] = Field(default_factory=list)
+
+
+class ProductionScenarioForecastResponse(BaseModel):
+    generated_at: datetime
+    model_version: str
+    observation_date: date
+    planning_horizon_months: int
+    role_months: List[ProductionOptimizationRoleMonthResponse]
+    department_months: List[ProductionOptimizationDepartmentMonthResponse]
+    organization_months: List[ProductionOptimizationOrganizationMonthResponse]
+    total_understaffed_fte_months: float

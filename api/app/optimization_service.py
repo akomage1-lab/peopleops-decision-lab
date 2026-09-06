@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from time import perf_counter
-from typing import Dict, Sequence, Tuple
+from typing import Dict, Optional, Sequence, Tuple
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -39,6 +39,13 @@ class RoleIdentity:
     department_id: int
     department: str
     role: str
+
+
+@dataclass(frozen=True)
+class ProductionRoleOverride:
+    role_id: int
+    annual_expected_attrition_rate: Optional[float] = None
+    staffing_targets: Optional[Tuple[float, ...]] = None
 
 
 @dataclass(frozen=True)
@@ -92,6 +99,18 @@ class ProductionHiringRecommendation:
 
 
 @dataclass(frozen=True)
+class ProductionScenarioForecast:
+    generated_at: datetime
+    model_version: str
+    observation_date: date
+    planning_horizon_months: int
+    role_months: Sequence[ProductionOptimizationRoleMonth]
+    department_months: Sequence[ProductionOptimizationDepartmentMonth]
+    organization_months: Sequence[ProductionOptimizationOrganizationMonth]
+    total_understaffed_fte_months: float
+
+
+@dataclass(frozen=True)
 class ProductionOptimizationResult:
     generated_at: datetime
     model_version: str
@@ -126,6 +145,7 @@ def assemble_production_optimization_inputs(
     session: Session,
     planning_period_incremental_workforce_budget: float,
     monthly_recruiting_capacity: Sequence[int],
+    role_overrides: Sequence[ProductionRoleOverride] = (),
 ) -> ProductionOptimizationAssembly:
     """Adapt complete M4 inputs to an M1 scenario with stable persisted role IDs."""
     try:
@@ -143,6 +163,7 @@ def assemble_production_optimization_inputs(
     records_by_display_identity = {
         (record.department.name, record.name): record for record in records
     }
+    overrides_by_role_id = _overrides_by_role_id(role_overrides)
     roles = []
     identities = {}
     for m4_role, provenance in zip(m4_assembly.scenario.roles, m4_assembly.provenance):
@@ -152,12 +173,21 @@ def assemble_production_optimization_inputs(
                 f"Missing persisted role identity for {provenance.department} / {provenance.role}."
             )
         engine_department, engine_role = _engine_role_identity(record)
+        override = overrides_by_role_id.get(record.id)
         role = RolePlan(
             department=engine_department,
             role=engine_role,
             current_fte=m4_role.current_fte,
-            annual_attrition_rate=m4_role.annual_attrition_rate,
-            staffing_targets=m4_role.staffing_targets,
+            annual_attrition_rate=(
+                override.annual_expected_attrition_rate
+                if override is not None and override.annual_expected_attrition_rate is not None
+                else m4_role.annual_attrition_rate
+            ),
+            staffing_targets=(
+                override.staffing_targets
+                if override is not None and override.staffing_targets is not None
+                else m4_role.staffing_targets
+            ),
             hiring_lead_time=m4_role.hiring_lead_time,
             monthly_loaded_cost=m4_role.monthly_loaded_cost,
             in_flight_hires=m4_role.in_flight_hires,
@@ -168,6 +198,11 @@ def assemble_production_optimization_inputs(
             department_id=record.department_id,
             department=record.department.name,
             role=record.name,
+        )
+    unknown_role_ids = set(overrides_by_role_id) - {record.id for record in records}
+    if unknown_role_ids:
+        raise ProductionOptimizationInputError(
+            f"Unknown persisted role IDs: {', '.join(str(role_id) for role_id in sorted(unknown_role_ids))}."
         )
     try:
         scenario = Scenario(
@@ -183,6 +218,26 @@ def assemble_production_optimization_inputs(
         observation_date=m4_assembly.observation_date,
         role_identities_by_engine_key=identities,
     )
+
+
+def _overrides_by_role_id(
+    role_overrides: Sequence[ProductionRoleOverride],
+) -> Dict[int, ProductionRoleOverride]:
+    overrides = {}
+    for override in role_overrides:
+        if override.role_id in overrides:
+            raise ProductionOptimizationInputError(
+                f"Duplicate transient scenario override for role ID {override.role_id}."
+            )
+        if (
+            override.annual_expected_attrition_rate is None
+            and override.staffing_targets is None
+        ):
+            raise ProductionOptimizationInputError(
+                f"Scenario override for role ID {override.role_id} has no changed assumption."
+            )
+        overrides[override.role_id] = override
+    return overrides
 
 
 def _role_months(assembly: ProductionOptimizationAssembly, forecast) -> Tuple[ProductionOptimizationRoleMonth, ...]:
@@ -321,10 +376,39 @@ def _validate_optimization_result(
     return recommendations, independently_recomputed
 
 
+def forecast_production_scenario(
+    session: Session,
+    role_overrides: Sequence[ProductionRoleOverride],
+) -> ProductionScenarioForecast:
+    """Forecast transient assumptions with the same M1 path as M4, without hiring decisions."""
+    assembly = assemble_production_optimization_inputs(
+        session,
+        planning_period_incremental_workforce_budget=0.0,
+        monthly_recruiting_capacity=(0,) * 6,
+        role_overrides=role_overrides,
+    )
+    forecast = forecast_workforce(assembly.scenario)
+    role_months = _role_months(assembly, forecast)
+    department_months, organization_months = _aggregates(
+        role_months, assembly.planning_months
+    )
+    return ProductionScenarioForecast(
+        generated_at=datetime.now(timezone.utc),
+        model_version="m1-production-scenario-forecast-v1",
+        observation_date=assembly.observation_date,
+        planning_horizon_months=assembly.scenario.horizon_months,
+        role_months=role_months,
+        department_months=department_months,
+        organization_months=organization_months,
+        total_understaffed_fte_months=forecast.total_understaffed_fte_months,
+    )
+
+
 def optimize_production_workforce(
     session: Session,
     planning_period_incremental_workforce_budget: float,
     monthly_recruiting_capacity: Sequence[int],
+    role_overrides: Sequence[ProductionRoleOverride] = (),
 ) -> ProductionOptimizationResult:
     """Run the fail-closed production optimization path using the authoritative M1 solver."""
     try:
@@ -332,6 +416,7 @@ def optimize_production_workforce(
             session,
             planning_period_incremental_workforce_budget,
             monthly_recruiting_capacity,
+            role_overrides,
         )
         baseline = forecast_workforce(assembly.scenario)
     except InputValidationError as error:

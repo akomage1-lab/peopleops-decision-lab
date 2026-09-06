@@ -49,6 +49,10 @@ M4 adapts persisted aggregate workforce observations and explicit future assumpt
 
 M5 adapts the same persisted M3/M4 inputs into the unchanged M1 two-pass optimizer. `POST /api/workforce/optimize` requires an explicit planning-period incremental workforce budget and six monthly recruiting-capacity values, returning provenance, baseline/optimized forecasts, and validated recommendations. See [the M5 production optimizer contract](docs/M5_PRODUCTION_OPTIMIZER.md).
 
+## M6 Decision Lab
+
+M6 adds the transient planning workflow: persisted baseline, editable scenario, authoritative scenario forecast, production optimization, three-way comparison, and deterministic explainability. See [the Decision Lab contract](docs/M6_DECISION_LAB.md) and [the canonical demo flow](docs/M6_DEMO_FLOW.md).
+
 ## Limitations and assumptions
 
 - The horizon is fixed to six months, and all inputs are synthetic aggregate expectations.

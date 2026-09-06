@@ -19,6 +19,8 @@ from .models import ScenarioRecord
 from .optimization_service import (
     ProductionOptimizationFailure,
     ProductionOptimizationInputError,
+    ProductionRoleOverride,
+    forecast_production_scenario,
     optimize_production_workforce,
 )
 from .schemas import (
@@ -34,6 +36,9 @@ from .schemas import (
     ProductionOptimizationRoleMonthResponse,
     ProductionOptimizeRequest,
     ProductionOptimizeResponse,
+    ProductionScenarioForecastRequest,
+    ProductionScenarioForecastResponse,
+    ProductionScenarioOptimizeRequest,
     RoleForecastMonthResponse,
     RoleForecastProvenanceResponse,
     ScenarioResponse,
@@ -137,6 +142,7 @@ def create_app() -> FastAPI:
             role_months=[RoleForecastMonthResponse(**item.__dict__) for item in forecast.role_months],
             department_months=[DepartmentForecastMonthResponse(**item.__dict__) for item in forecast.department_months],
             organization_months=[OrganizationForecastMonthResponse(**item.__dict__) for item in forecast.organization_months],
+            total_understaffed_fte_months=forecast.total_understaffed_fte_months,
         )
 
     @app.post("/api/workforce/optimize", response_model=ProductionOptimizeResponse)
@@ -149,6 +155,118 @@ def create_app() -> FastAPI:
                 session,
                 request.planning_period_incremental_workforce_budget,
                 request.monthly_recruiting_capacity,
+            )
+        except ProductionOptimizationInputError as error:
+            raise HTTPException(status_code=422, detail=str(error))
+        except ProductionOptimizationFailure:
+            raise HTTPException(
+                status_code=503,
+                detail="The production optimizer did not return a proven optimal plan.",
+            )
+        return ProductionOptimizeResponse(
+            generated_at=result.generated_at,
+            model_version=result.model_version,
+            observation_date=result.observation_date,
+            planning_horizon_months=result.planning_horizon_months,
+            submitted_budget=result.submitted_budget,
+            submitted_monthly_recruiting_capacity=list(result.submitted_monthly_recruiting_capacity),
+            solver=result.solver,
+            primary_status=result.primary_status,
+            secondary_status=result.secondary_status,
+            optimization_duration_ms=result.optimization_duration_ms,
+            baseline_understaffed_fte_months=result.baseline_understaffed_fte_months,
+            baseline_role_months=[
+                ProductionOptimizationRoleMonthResponse(**item.__dict__)
+                for item in result.baseline_role_months
+            ],
+            baseline_department_months=[
+                ProductionOptimizationDepartmentMonthResponse(**item.__dict__)
+                for item in result.baseline_department_months
+            ],
+            baseline_organization_months=[
+                ProductionOptimizationOrganizationMonthResponse(**item.__dict__)
+                for item in result.baseline_organization_months
+            ],
+            optimized_understaffed_fte_months=result.optimized_understaffed_fte_months,
+            improvement_understaffed_fte_months=result.improvement_understaffed_fte_months,
+            planning_period_incremental_workforce_spend_used=(
+                result.planning_period_incremental_workforce_spend_used
+            ),
+            unused_budget=result.unused_budget,
+            recommendations=[
+                ProductionHiringRecommendationResponse(**item.__dict__)
+                for item in result.recommendations
+            ],
+            optimized_role_months=[
+                ProductionOptimizationRoleMonthResponse(**item.__dict__)
+                for item in result.optimized_role_months
+            ],
+            optimized_department_months=[
+                ProductionOptimizationDepartmentMonthResponse(**item.__dict__)
+                for item in result.optimized_department_months
+            ],
+            optimized_organization_months=[
+                ProductionOptimizationOrganizationMonthResponse(**item.__dict__)
+                for item in result.optimized_organization_months
+            ],
+        )
+
+    @app.post("/api/workforce/scenario/forecast", response_model=ProductionScenarioForecastResponse)
+    def forecast_transient_scenario(
+        request: ProductionScenarioForecastRequest,
+        session: Session = Depends(get_session),
+    ) -> ProductionScenarioForecastResponse:
+        overrides = tuple(
+            ProductionRoleOverride(
+                role_id=item.role_id,
+                annual_expected_attrition_rate=item.annual_expected_attrition_rate,
+                staffing_targets=(tuple(item.staffing_targets) if item.staffing_targets is not None else None),
+            )
+            for item in request.role_overrides
+        )
+        try:
+            result = forecast_production_scenario(session, overrides)
+        except ProductionOptimizationInputError as error:
+            raise HTTPException(status_code=422, detail=str(error))
+        return ProductionScenarioForecastResponse(
+            generated_at=result.generated_at,
+            model_version=result.model_version,
+            observation_date=result.observation_date,
+            planning_horizon_months=result.planning_horizon_months,
+            role_months=[
+                ProductionOptimizationRoleMonthResponse(**item.__dict__)
+                for item in result.role_months
+            ],
+            department_months=[
+                ProductionOptimizationDepartmentMonthResponse(**item.__dict__)
+                for item in result.department_months
+            ],
+            organization_months=[
+                ProductionOptimizationOrganizationMonthResponse(**item.__dict__)
+                for item in result.organization_months
+            ],
+            total_understaffed_fte_months=result.total_understaffed_fte_months,
+        )
+
+    @app.post("/api/workforce/scenario/optimize", response_model=ProductionOptimizeResponse)
+    def optimize_transient_scenario(
+        request: ProductionScenarioOptimizeRequest,
+        session: Session = Depends(get_session),
+    ) -> ProductionOptimizeResponse:
+        overrides = tuple(
+            ProductionRoleOverride(
+                role_id=item.role_id,
+                annual_expected_attrition_rate=item.annual_expected_attrition_rate,
+                staffing_targets=(tuple(item.staffing_targets) if item.staffing_targets is not None else None),
+            )
+            for item in request.role_overrides
+        )
+        try:
+            result = optimize_production_workforce(
+                session,
+                request.planning_period_incremental_workforce_budget,
+                request.monthly_recruiting_capacity,
+                overrides,
             )
         except ProductionOptimizationInputError as error:
             raise HTTPException(status_code=422, detail=str(error))

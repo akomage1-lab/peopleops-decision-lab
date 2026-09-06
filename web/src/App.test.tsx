@@ -2,53 +2,107 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 
-const scenario = {
-  id: 1,
-  name: "M2 Seeded Workforce Plan",
-  planning_horizon_months: 6,
-  planning_period_incremental_workforce_budget: 170000
+const organizationMonths = Array.from({ length: 6 }, (_, index) => ({
+  month: `2026-0${index + 1}-01`, expected_fte: 160 - index, staffing_target: 170 + index, staffing_shortage: 10 + index
+}));
+const sdrProvenance = {
+  role_id: 5, department_id: 2, department: "Sales", role: "Sales Development Representative",
+  observation_date: "2025-12-01", starting_observed_fte: 14, annual_expected_attrition_rate: 0.12,
+  staffing_targets: [18, 18, 19, 19, 20, 20], in_flight_hires: [0, 0, 0, 0, 0, 0]
 };
-
-const result = {
-  scenario_id: 1,
-  available_budget: 100000,
-  baseline_understaffed_fte_months: 10,
-  optimized_understaffed_fte_months: 4,
-  improvement_understaffed_fte_months: 6,
-  incremental_workforce_spend_used: 90000,
-  recommendations: [{ department: "Sales", role: "Account Executive", decision_month: 1, arrival_month: 1, hires: 1, incremental_workforce_spend: 90000 }],
-  solver_status: { solver: "SCIP", primary: "OPTIMAL", secondary: "OPTIMAL" }
+const roleMonth = {
+  role_id: 5, department_id: 2, department: "Sales", role: "Sales Development Representative", month: "2026-01-01",
+  expected_fte: 13.85, staffing_target: 18, staffing_shortage: 4.15
+};
+const baseline = {
+  generated_at: "2026-01-01T00:00:00Z", model_version: "m1-baseline-forecast-v1", planning_horizon_months: 6,
+  observation_date: "2025-12-01", role_provenance: [sdrProvenance],
+  role_months: [{ ...roleMonth, expected_fte_before_attrition: 14, expected_attrition_loss: .15, in_flight_hires_arriving: 0, staffing_surplus: 0 }],
+  department_months: organizationMonths.map((row) => ({ ...row, department_id: 2, department: "Sales" })),
+  organization_months: organizationMonths, total_understaffed_fte_months: 117.61
+};
+const scenario = {
+  generated_at: "2026-01-01T00:00:00Z", model_version: "m1-production-scenario-forecast-v1", observation_date: "2025-12-01", planning_horizon_months: 6,
+  role_months: [{ ...roleMonth, expected_fte: 13.7, staffing_target: 20, staffing_shortage: 6.3 }],
+  department_months: organizationMonths.map((row) => ({ ...row, department_id: 2, department: "Sales" })),
+  organization_months: organizationMonths.map((row) => ({ ...row, expected_fte: row.expected_fte - 1, staffing_target: row.staffing_target + 1, staffing_shortage: row.staffing_shortage + 2 })),
+  total_understaffed_fte_months: 131.24
+};
+const optimized = {
+  generated_at: "2026-01-01T00:00:00Z", model_version: "m1-production-optimizer-v1", observation_date: "2025-12-01", planning_horizon_months: 6,
+  submitted_budget: 150000, submitted_monthly_recruiting_capacity: [2, 2, 2, 2, 2, 2], solver: "SCIP", primary_status: "OPTIMAL", secondary_status: "OPTIMAL", optimization_duration_ms: 53,
+  baseline_understaffed_fte_months: 131.24, baseline_role_months: scenario.role_months, baseline_department_months: scenario.department_months, baseline_organization_months: scenario.organization_months,
+  optimized_understaffed_fte_months: 111.57, improvement_understaffed_fte_months: 19.67, planning_period_incremental_workforce_spend_used: 150000, unused_budget: 0,
+  recommendations: [{ role_id: 5, department_id: 2, department: "Sales", role: "Sales Development Representative", hires: 2, decision_month: 1, arrival_month: 2, planning_period_incremental_workforce_spend: 75000 }],
+  optimized_role_months: scenario.role_months, optimized_department_months: scenario.department_months, optimized_organization_months: scenario.organization_months
 };
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
 
-afterEach(() => {
-  cleanup();
-  vi.restoreAllMocks();
-});
+function mockFetch(...responses: Response[]) {
+  const fetchMock = vi.fn();
+  responses.forEach((response) => fetchMock.mockResolvedValueOnce(response));
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
 
-describe("M2 walking-skeleton page", () => {
-  it("renders the fetched scenario and shows a successful optimization", async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(scenario)).mockResolvedValueOnce(jsonResponse(result));
-    vi.stubGlobal("fetch", fetchMock);
+afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+
+describe("M6 Decision Lab", () => {
+  it("loads the real baseline presentation", async () => {
+    mockFetch(jsonResponse(baseline));
     render(<App />);
-
-    expect(await screen.findByRole("heading", { name: scenario.name })).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Planning-period incremental workforce budget"), { target: { value: "100000" } });
-    fireEvent.click(screen.getByRole("button", { name: "Optimize Plan" }));
-
-    expect(await screen.findByText("Recommended hiring starts")).toBeInTheDocument();
-    expect(screen.getByText("Sales / Account Executive")).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenLastCalledWith("/api/scenarios/1/optimize", expect.objectContaining({ body: JSON.stringify({ planning_period_incremental_workforce_budget: 100000 }) }));
+    expect(await screen.findByRole("heading", { name: "Where are we heading?" })).toBeInTheDocument();
+    expect(screen.getAllByText("117.6")).toHaveLength(2);
+    expect(screen.getByLabelText("Annual expected attrition")).toHaveValue(12);
   });
 
-  it("shows an obvious API error state", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(jsonResponse(scenario)).mockResolvedValueOnce(jsonResponse({ detail: "Optimizer unavailable." }, 503)));
+  it("runs a changed transient scenario and displays the comparison", async () => {
+    const fetchMock = mockFetch(jsonResponse(baseline), jsonResponse(scenario));
     render(<App />);
-    await screen.findByRole("heading", { name: scenario.name });
-    fireEvent.click(screen.getByRole("button", { name: "Optimize Plan" }));
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Optimizer unavailable."));
+    await screen.findByRole("heading", { name: "Where are we heading?" });
+    fireEvent.change(screen.getByLabelText("Annual expected attrition"), { target: { value: "18" } });
+    fireEvent.click(screen.getByRole("button", { name: "Run Scenario" }));
+    expect(await screen.findByText("Scenario active")).toBeInTheDocument();
+    expect(screen.getByText("131.2")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenLastCalledWith("/api/workforce/scenario/forecast", expect.objectContaining({ body: expect.stringContaining("0.18") }));
+  });
+
+  it("shows optimizer recommendations after the scenario run", async () => {
+    const fetchMock = mockFetch(jsonResponse(baseline), jsonResponse(scenario), jsonResponse(optimized));
+    render(<App />);
+    await screen.findByRole("heading", { name: "Where are we heading?" });
+    fireEvent.click(screen.getByRole("button", { name: "Run Scenario" }));
+    await screen.findByText("Scenario active");
+    fireEvent.click(screen.getByRole("button", { name: "Optimize Scenario" }));
+    expect(await screen.findByRole("heading", { name: "Starts and arrivals" })).toBeInTheDocument();
+    expect(screen.getAllByText("Sales Development Representative").length).toBeGreaterThan(0);
+    expect(fetchMock).toHaveBeenLastCalledWith("/api/workforce/scenario/optimize", expect.anything());
+  });
+
+  it("resets changed inputs to the persisted baseline assumptions", async () => {
+    mockFetch(jsonResponse(baseline));
+    render(<App />);
+    await screen.findByRole("heading", { name: "Where are we heading?" });
+    const attrition = screen.getByLabelText("Annual expected attrition");
+    fireEvent.change(attrition, { target: { value: "18" } });
+    expect(attrition).toHaveValue(18);
+    fireEvent.click(screen.getByRole("button", { name: "Reset to Baseline" }));
+    expect(screen.getByLabelText("Annual expected attrition")).toHaveValue(12);
+    expect(screen.getByLabelText("Planning-period incremental workforce budget")).toHaveValue(150000);
+  });
+
+  it("shows useful validation and API error states", async () => {
+    mockFetch(jsonResponse(baseline), jsonResponse({ detail: "Scenario service unavailable." }, 503));
+    render(<App />);
+    await screen.findByRole("heading", { name: "Where are we heading?" });
+    fireEvent.change(screen.getByLabelText("Annual expected attrition"), { target: { value: "100" } });
+    fireEvent.click(screen.getByRole("button", { name: "Run Scenario" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("below 100%");
+    fireEvent.change(screen.getByLabelText("Annual expected attrition"), { target: { value: "18" } });
+    fireEvent.click(screen.getByRole("button", { name: "Run Scenario" }));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Scenario service unavailable."));
   });
 });

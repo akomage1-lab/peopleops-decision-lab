@@ -30,6 +30,8 @@ class ForecastInputError(ValueError):
 
 @dataclass(frozen=True)
 class RoleForecastProvenance:
+    role_id: int
+    department_id: int
     department: str
     role: str
     observation_date: date
@@ -41,6 +43,8 @@ class RoleForecastProvenance:
 
 @dataclass(frozen=True)
 class RoleForecastMonth:
+    role_id: int
+    department_id: int
     department: str
     role: str
     month: date
@@ -76,6 +80,7 @@ class ProductionForecast:
     role_months: Sequence[RoleForecastMonth]
     department_months: Sequence[DepartmentForecastAggregateMonth]
     organization_months: Sequence[ForecastAggregateMonth]
+    total_understaffed_fte_months: float
 
 
 @dataclass(frozen=True)
@@ -156,6 +161,8 @@ def assemble_forecast_inputs(session: Session) -> ForecastAssembly:
             in_flight_hires={index: hires for index, hires in enumerate(in_flight) if hires},
         ))
         provenance.append(RoleForecastProvenance(
+            role_id=role.id,
+            department_id=role.department_id,
             department=role.department.name,
             role=role.name,
             observation_date=observation_date,
@@ -194,6 +201,8 @@ def production_baseline_forecast(session: Session) -> ProductionForecast:
             expected = result.expected_fte[index]
             target = role.staffing_targets[index]
             role_months.append(RoleForecastMonth(
+                role_id=provenance.role_id,
+                department_id=provenance.department_id,
                 department=role.department,
                 role=role.role,
                 month=month,
@@ -234,4 +243,5 @@ def production_baseline_forecast(session: Session) -> ProductionForecast:
         role_months=tuple(role_months),
         department_months=tuple(department_months),
         organization_months=tuple(organization_months),
+        total_understaffed_fte_months=m1_result.total_understaffed_fte_months,
     )
