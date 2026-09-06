@@ -16,6 +16,9 @@ test("Flow A: Overview displays seeded metrics and opens Decision Lab", async ({
   await expect(page.getByRole("row", { name: /Sales 47\.5 10\.4 2\.5%/ })).toBeVisible();
   await page.getByRole("button", { name: "Test a hiring plan in Decision Lab" }).click();
   await expect(page.getByRole("heading", { name: "Baseline forecast: the unchanged demo plan" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Company-wide optimizer constraints" })).toBeVisible();
+  await expect(page.getByText("These limits apply to the optimized hiring plan across all roles, not only the selected role above.")).toBeVisible();
+  await expect(page.getByLabel("Company-wide optimizer budget (USD)")).toHaveValue("150000");
 });
 
 test("Flow B: changed scenario compares, then reset restores persisted input", async ({ page }) => {
@@ -50,11 +53,16 @@ test("Flow D: invalid input has an understandable error and no optimization", as
   await expect(page.getByRole("heading", { name: "Starts and arrivals" })).toHaveCount(0);
 });
 
-test("Flow E: mobile navigation keeps synthetic demo provenance visible", async ({ page }) => {
+test("Flow E: mobile Decision Lab keeps provenance and company-wide constraints usable", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 800 });
   await page.goto("/");
   await expect(page.getByText("· Synthetic demo data", { exact: true })).toBeVisible();
   await expect(page.getByText("Portfolio demo — all company and workforce data shown here are synthetic.", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Overview", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Decision Lab", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Decision Lab", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Company-wide optimizer constraints" })).toBeVisible();
+  await expect(page.getByText(/across all roles, not only the selected role above/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Run Scenario", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Optimize Scenario", exact: true })).toBeVisible();
 });

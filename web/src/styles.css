@@ -42,16 +42,24 @@ label, legend { color: #354257; display: block; font-size: .8rem; font-weight: 7
 select, input { background: #fff; border: 1px solid #b8c3d4; border-radius: 7px; color: #172033; margin-top: 6px; padding: 8px 9px; width: 100%; }
 select { margin-bottom: 17px; }
 .role-editor { border-top: 1px solid #e9edf3; padding-top: 16px; }
+.role-assumptions-heading, .constraint-heading { color: #34435a; font-size: .92rem; margin: 18px 0 8px; }
 .role-meta { margin: 0 0 15px; }
 .suffix-input { align-items: center; display: flex; gap: 7px; }
 .suffix-input input { width: 110px; }
 .suffix-input span { color: #637289; font-weight: 700; margin-top: 7px; }
+.budget-input { align-items: center; display: flex; gap: 7px; }
+.budget-input input { margin-top: 0; width: 150px; }
+.budget-input span { color: #637289; font-size: .86rem; font-weight: 700; }
 fieldset { border: 0; margin: 16px 0 0; padding: 0; }
 legend { margin-bottom: 6px; }
 .target-grid, .capacity-grid { display: grid; gap: 7px; grid-template-columns: repeat(3, 1fr); }
 .target-grid label, .capacity-grid label { color: #6b788b; font-size: .7rem; }
 .target-grid input, .capacity-grid input { margin-top: 3px; padding: 7px; }
 .constraint-grid { border-top: 1px solid #e9edf3; margin-top: 19px; padding-top: 18px; }
+.constraint-grid .constraint-heading { margin-top: 0; }
+.constraint-intro, .optimize-helper { color: #536277; font-size: .84rem; line-height: 1.45; }
+.constraint-intro { margin: 0 0 15px; }
+.optimize-helper { border-top: 1px solid #e9edf3; margin: 19px 0 0; padding-top: 16px; }
 .action-row { display: flex; gap: 10px; margin-top: 22px; }
 button { background: #205eb9; border: 1px solid #205eb9; border-radius: 7px; color: white; cursor: pointer; font-weight: 800; padding: 10px 13px; }
 button.secondary { background: white; color: #205eb9; }
