@@ -10,9 +10,20 @@ from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 
 DEFAULT_DATABASE_URL = "postgresql+psycopg:///peopleops_decision_lab"
-DATABASE_URL = os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL)
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+
+def normalize_database_url(url: str) -> str:
+    """Accept a standard hosted-PostgreSQL URL with the installed psycopg driver."""
+    if url.startswith("postgres://"):
+        return "postgresql+psycopg://" + url[len("postgres://"):]
+    if url.startswith("postgresql://"):
+        return "postgresql+psycopg://" + url[len("postgresql://"):]
+    return url
+
+
+DATABASE_URL = normalize_database_url(os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL))
+
+engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_recycle=1800)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 

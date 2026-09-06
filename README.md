@@ -1,47 +1,63 @@
 # PeopleOps Decision Lab — Workforce Planning & Optimization
 
-PeopleOps Decision Lab is a small, synthetic, aggregate workforce-planning proof of concept. It combines an executive Overview with a Decision Lab: managers can inspect current and projected staffing risk, then model transient assumptions and optimize in-horizon hiring starts.
+PeopleOps Decision Lab is a synthetic, aggregate workforce-planning demo. It helps a decision-maker see where a six-month staffing plan is at risk, test transient assumptions, and optimize constrained hiring starts without collecting employee, candidate, or payroll records.
 
-It is deliberately not an HR CRUD application. It contains no employee or candidate records, authentication, payroll workflow, or real-world customer data.
+> **Live demo:** prepared for public deployment in M9.1; no public deployment has been made yet.
 
-## Technology and architecture
+## The decision it supports
 
-`PostgreSQL → SQLAlchemy/Alembic → FastAPI → existing M1 forecast/optimizer → React/Vite`
+The app answers a deliberately narrow question: given current aggregate FTE, planned staffing targets, expected attrition, hiring lead times, a planning-period incremental workforce budget, and monthly recruiting capacity, which hiring starts best reduce in-horizon understaffing?
 
-- **Overview:** authoritative M3 observed analytics plus the persisted M4 six-month baseline forecast.
-- **Decision Lab:** transient role assumptions, planning-period incremental workforce budget, and monthly recruiting capacity sent to the existing M5/M1 optimizer.
-- **Data:** deterministic aggregate demo data, seeded locally; no personal data.
+The **Overview** shows observed aggregate workforce context and a persisted six-month forecast. The **Decision Lab** lets a user change a scenario in the browser, compare baseline and scenario risk, and request an optimized plan. Scenario edits are transient: nothing is written back from the UI.
 
-The M1 objective first minimizes total understaffed FTE-months and then minimizes planning-period incremental workforce spend among plans within the documented numerical tolerance of that shortage optimum. Spend covers optimized-hire workforce/payroll cost incurred only after arrival inside the six-month planning horizon.
+## Architecture
 
-## Supported environment
+```mermaid
+flowchart LR
+    Browser[React + Vite browser UI] -->|HTTPS JSON| API[FastAPI]
+    API -->|read seeded aggregate inputs| DB[(PostgreSQL)]
+    API --> Forecast[Existing M1 forecast]
+    API --> Optimizer[OR-Tools MIP\nSCIP, CBC fallback]
+    Forecast --> Response[Typed API response]
+    Optimizer --> Response
+    Response --> Browser
+```
 
-- Python 3.9 or later (CI validates Python 3.9).
-- Node.js 20 or later for the frontend and browser checks.
-- PostgreSQL 16 (local PostgreSQL or the CI service image).
+For public deployment, the same components map cleanly to Vercel (static Vite frontend), Railway (always-on FastAPI), and Neon (hosted PostgreSQL). The exact M9.2 procedure is in [the deployment runbook](docs/M9_DEPLOYMENT.md); M9.1 creates no cloud resources and performs no deployment.
 
-Python dependencies are bounded in [pyproject.toml](pyproject.toml); frontend installs are pinned by [web/package-lock.json](web/package-lock.json) and should use `npm ci`.
+## How the planning model works
 
-## Clean local setup
+The model plans at **Department × Role × Month**. Annual expected attrition is converted to an equivalent monthly rate. Each month applies expected attrition to prior FTE, then adds in-flight arrivals and optimized hires whose whole-month lead time has elapsed. Shortage is `max(target - expected_fte, 0)`, so expected FTE can be fractional.
 
-Copy the safe local defaults if you need environment variables; do not commit a real `.env` file:
+The optimizer uses a lexicographic two-pass mixed-integer solve:
+
+1. Minimize total understaffed FTE-months over the fixed six-month horizon.
+2. Minimize planning-period incremental workforce spend while preserving that shortage optimum within `1e-7`, a numerical feasibility tolerance for floating-point solver values rather than an objective trade-off.
+
+The planning-period incremental workforce budget covers **only optimized-hire loaded workforce/payroll cost incurred after arrival inside the horizon**. Existing workforce and in-flight costs are excluded. Starts that would arrive after Month 6 are not representable; a Month-6 arrival contributes one month of cost and coverage only when that is optimal.
+
+## Data, model boundaries, and responsible use
+
+All data is deterministic, hand-authored, synthetic, and aggregate. The project is a portfolio proof of concept, not an HR system or an automated employment decision-maker. It does not contain employee or candidate records, demographic data, compensation records, authentication, payroll workflows, or production integrations.
+
+Outputs are scenario analysis, not recommendations about individuals. They should be reviewed with human judgment and organizational context before any staffing action. The model does not represent uncertainty, productivity ramps, interview capacity, source channels, geographic constraints, role-specific recruiting caps, or legal and fairness review requirements.
+
+## Stack and quality checks
+
+- **Frontend:** React, TypeScript, Vite, Vitest, Playwright
+- **API:** FastAPI, Pydantic, SQLAlchemy
+- **Data:** PostgreSQL, Alembic, deterministic seed
+- **Optimization:** existing M1 OR-Tools MIP model using SCIP with an explicit CBC fallback
+- **Quality:** Python integration/regression tests; frontend unit, type, build, and live browser tests; GitHub Actions validation
+
+The browser path is tested against the real FastAPI service, PostgreSQL seed, forecast, and optimizer—without mocking the API. The test suite also guards budget, recruiting-capacity, end-of-horizon, and lexicographic-optimality invariants.
+
+## Run locally
+
+Requirements: Python 3.9+, Node 20+, and PostgreSQL 16. Copy the safe local defaults; never commit a real `.env` file.
 
 ```bash
 cp .env.example .env
-```
-
-Start a local PostgreSQL 16 server and create the development and test databases. The existing local setup documentation uses Homebrew:
-
-```bash
-brew install postgresql@16
-/opt/homebrew/opt/postgresql@16/bin/pg_ctl -D /opt/homebrew/var/postgresql@16 -l /tmp/peopleops-postgres.log start
-/opt/homebrew/opt/postgresql@16/bin/createdb peopleops_decision_lab
-/opt/homebrew/opt/postgresql@16/bin/createdb peopleops_decision_lab_test
-```
-
-From the repository root, install the backend, apply the schema, and seed deterministic demo data:
-
-```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install --upgrade pip
 .venv/bin/python -m pip install -e '.[dev]'
@@ -49,12 +65,17 @@ python3 -m venv .venv
 .venv/bin/python -m api.seed
 ```
 
-The seed is idempotent: it recreates the deterministic aggregate M3 organization and M2 scenario. For a clean schema rehearsal, run `.venv/bin/python -m alembic downgrade base` followed by `.venv/bin/python -m alembic upgrade head` before seeding.
-
-In separate terminals, run the API and frontend:
+Create local development and test databases if needed:
 
 ```bash
-DATABASE_URL=postgresql+psycopg:///peopleops_decision_lab .venv/bin/python -m uvicorn api.app.main:app --host 127.0.0.1 --port 8000
+createdb peopleops_decision_lab
+createdb peopleops_decision_lab_test
+```
+
+Run the API and UI in separate terminals:
+
+```bash
+.venv/bin/python -m uvicorn api.app.main:app --host 127.0.0.1 --port 8000
 ```
 
 ```bash
@@ -63,27 +84,16 @@ npm ci
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173`. Vite proxies `/api` requests to FastAPI on port 8000.
+Open `http://127.0.0.1:5173`. With `VITE_API_BASE_URL` empty, Vite's development-only proxy routes relative `/api` calls to local FastAPI. For an external API, copy `web/.env.example` to `web/.env.local` and set `VITE_API_BASE_URL` to its HTTPS origin.
 
-## Verification
-
-Run backend integration/regression tests against the separate test database:
+## Validate locally
 
 ```bash
 M2_TEST_DATABASE_URL=postgresql+psycopg:///peopleops_decision_lab_test .venv/bin/python -m pytest -q
+cd web && npm ci && npm test && npm run typecheck && npm run build
 ```
 
-Run frontend tests, type checking, and production build:
-
-```bash
-cd web
-npm ci
-npm test
-npm run typecheck
-npm run build
-```
-
-For live browser acceptance, with PostgreSQL, API, and Vite already running, install Chromium once and execute the critical flows against the real backend:
+With PostgreSQL, FastAPI, and Vite running, execute the live browser checks:
 
 ```bash
 cd web
@@ -91,72 +101,11 @@ npx playwright install chromium
 npm run e2e
 ```
 
-GitHub Actions runs the migration/seed/backend suite, frontend unit/type/build checks, and these live browser flows against PostgreSQL. See [M8 reliability notes](docs/M8_RELIABILITY.md).
+## Deployment preparation and project history
 
-## How the model works
+- [M9 deployment runbook](docs/M9_DEPLOYMENT.md): exact GitHub, Neon, Railway, Vercel, CORS, and production-acceptance steps for M9.2.
+- [Portfolio copy](docs/PORTFOLIO_COPY.md): concise, honest project and résumé descriptions.
+- [M8 reliability guide](docs/M8_RELIABILITY.md): CI, test layers, error handling, accessibility, and public-repository safeguards.
+- [Synthetic demo-data story](docs/DEMO_DATA_STORY.md), [M5 optimizer contract](docs/M5_PRODUCTION_OPTIMIZER.md), and [M6 Decision Lab contract](docs/M6_DECISION_LAB.md): supporting product and model detail.
 
-The model plans at Department × Role × Month. It converts annual attrition `a` to an equivalent monthly rate with `1 - (1 - a) ** (1 / 12)`. Each month begins from the prior expected FTE after attrition, then adds in-flight arrivals and any optimized hires whose lead time has elapsed. Shortage is `max(target - expected_fte, 0)`, so expected FTE can remain fractional.
-
-Hires are nonnegative integers by role and decision month. Starts whose arrival would land beyond the six-month horizon cannot be selected. The optimizer minimizes total understaffed FTE-months first, then runs a second, constrained solve to minimize in-horizon incremental hiring cost among equally good shortage outcomes. Costs cover only months after each optimized hire arrives. Monthly recruiting-start capacity and the planning-period incremental workforce budget are hard constraints.
-
-## M1 install and checks
-
-The project targets Python 3.9 or later. The local environment used for this M1 was Python 3.9.6. Create an isolated environment and install the minimal runtime plus test dependency:
-
-```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install --upgrade pip
-.venv/bin/python -m pip install -e '.[dev]'
-```
-
-OR-Tools 9.10–9.11 is pinned because it supports the installed Python 3.9 environment and includes the linear solver interface used here.
-
-## Run
-
-```bash
-.venv/bin/python -m pytest
-.venv/bin/python -m peopleops.demo
-```
-
-The demo prints the six-month planning-period incremental workforce budget, baseline role shortages and aggregate understaffing, the recommended starts and arrivals, in-period workforce spend used, improvement, and both solver termination statuses.
-
-## M2 walking skeleton
-
-M2 introduced the local end-to-end backbone: a seeded PostgreSQL scenario is read by FastAPI, adapted into the unchanged M1 engine, and displayed in React/Vite. Later milestones expanded the browser Decision Lab with transient role assumptions, budget, and recruiting-capacity edits; no browser edits are persisted.
-
-See [M2 walking-skeleton setup and run instructions](docs/M2_WALKING_SKELETON.md). Once PostgreSQL is running and migrated, start the API with `.venv/bin/uvicorn api.app.main:app --reload`, then run `npm run dev` in `web/` and open the shown local URL.
-
-## M3 data and metrics foundation
-
-M3 adds a deterministic, aggregate 12-month workforce history and six months of planning assumptions. Read-only APIs expose a workforce summary, historical trend, and department metrics; the M2 page deliberately remains unchanged. See [the M3 metric contract](docs/M3_METRICS.md) and [the synthetic demo-data story](docs/DEMO_DATA_STORY.md).
-
-## M4 production forecast engine
-
-M4 adapts persisted aggregate workforce observations and explicit future assumptions into the unchanged M1 baseline forecast engine. `GET /api/workforce/forecast` returns typed role-month forecasts, additive department and organization aggregates, and the provenance needed to explain them. See [the M4 production forecast contract](docs/M4_PRODUCTION_FORECAST.md).
-
-## M5 production workforce optimizer
-
-M5 adapts the same persisted M3/M4 inputs into the unchanged M1 two-pass optimizer. `POST /api/workforce/optimize` requires an explicit planning-period incremental workforce budget and six monthly recruiting-capacity values, returning provenance, baseline/optimized forecasts, and validated recommendations. See [the M5 production optimizer contract](docs/M5_PRODUCTION_OPTIMIZER.md).
-
-## M6 Decision Lab
-
-M6 adds the transient planning workflow: persisted baseline, editable scenario, authoritative scenario forecast, production optimization, three-way comparison, and deterministic explainability. See [the Decision Lab contract](docs/M6_DECISION_LAB.md) and [the canonical demo flow](docs/M6_DEMO_FLOW.md).
-
-## M7 Executive Workforce Analytics
-
-M7 adds a compact executive Overview before the Decision Lab. `GET /api/workforce/overview` composes authoritative M3 observed analytics and the persisted M4 baseline forecast into current position, six-month risk concentration, recent workforce flow, historical hiring-speed evidence, and clearly separated observed and forecast visuals. See [the M7 executive analytics contract](docs/M7_EXECUTIVE_ANALYTICS.md).
-
-## M8 reliability and quality hardening
-
-M8 adds reproducible CI, deterministic browser acceptance coverage, safe database-failure handling, accessibility and responsive-layout checks, and public-repository configuration safeguards. See [the M8 reliability guide](docs/M8_RELIABILITY.md).
-
-## Limitations and assumptions
-
-- The horizon is fixed to six months, and all inputs are synthetic aggregate expectations.
-- Attrition is deterministic expected FTE, not employee-level stochastic simulation.
-- New hires join fully at the end of a whole-month lead time; partial-month starts and productivity ramps are excluded.
-- Costs are a simple loaded monthly cost charged from arrival through the end of M1. The planning-period incremental workforce budget therefore represents only optimized-hire workforce/payroll spend incurred inside the six-month horizon; existing and in-flight workforce costs are excluded.
-- The model has one aggregate recruiting-capacity constraint per month. It does not yet model source channels, interviewer capacity, geographic constraints, or role-specific recruiting caps.
-- A plan is only trusted if both solver passes terminate `OPTIMAL`; failures raise rather than return a guessed recommendation.
-
-See [the frozen M0 contract](docs/PROJECT_CONTRACT.md) and [the M1 acceptance criteria](docs/M1_ACCEPTANCE.md) for the exact scope and test cases.
+M0 through M8 delivered the frozen planning contract, M1 engine, live seeded browser path, aggregate data/forecast/optimization services, Decision Lab, executive analytics, and reliability hardening. M9.1 prepares those existing capabilities for portfolio release; it does not add a new planning feature or alter the model.

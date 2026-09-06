@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 import logging
+import os
 from datetime import date
 from typing import AsyncIterator, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -59,6 +61,7 @@ from .service import optimize_record
 
 
 logger = logging.getLogger(__name__)
+LOCAL_FRONTEND_ORIGINS = ("http://localhost:5173", "http://127.0.0.1:5173")
 
 
 @asynccontextmanager
@@ -67,10 +70,32 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     yield
 
 
+def cors_origins_from_environment() -> tuple[str, ...]:
+    """Return explicit CORS origins; production never falls back to a wildcard."""
+    environment = os.getenv("APP_ENV", "development").strip().lower()
+    configured = tuple(
+        origin.strip().rstrip("/")
+        for origin in os.getenv("ALLOWED_ORIGINS", "").split(",")
+        if origin.strip()
+    )
+    if environment == "production":
+        if not configured:
+            raise RuntimeError("ALLOWED_ORIGINS is required when APP_ENV=production.")
+        return configured
+    return configured or LOCAL_FRONTEND_ORIGINS
+
+
 def create_app() -> FastAPI:
     """Create the compact aggregate workforce-planning HTTP surface."""
     app = FastAPI(
         title="PeopleOps Decision Lab", version="0.3.0", debug=False, lifespan=lifespan
+    )
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(cors_origins_from_environment()),
+        allow_credentials=False,
+        allow_methods=["GET", "POST"],
+        allow_headers=["Content-Type"],
     )
 
     @app.exception_handler(SQLAlchemyError)

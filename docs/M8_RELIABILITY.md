@@ -79,7 +79,9 @@ performance tuning is introduced.
 - `.env` and variants are ignored; `.env.example` is safe to publish.
 - Database configuration is environment-driven and defaults only to a local
   PostgreSQL socket.
-- CORS is not opened globally; the Vite development proxy is local-only.
+- CORS is environment-driven: development defaults to explicit localhost Vite
+  origins, while production requires an explicit `ALLOWED_ORIGINS` list and
+  disables credentialed requests. The Vite development proxy is local-only.
 - `npm audit` is reviewed during M8; production dependencies report no known
   vulnerabilities at the validated lockfile state.
 
