@@ -35,8 +35,11 @@ describe("M7 executive overview", () => {
 
     expect(await screen.findByRole("heading", { name: "What changed, where risk is building, and what to do next." })).toBeInTheDocument();
     expect(screen.getByText("117.6")).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "Six-month baseline workforce forecast" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Synthetic demo planning workforce forecast" })).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Observed workforce FTE history" })).toBeInTheDocument();
+    expect(screen.getByText(/Jan 2026–Jun 2026 demo planning horizon/)).toBeInTheDocument();
+    expect(screen.getByText(/1 understaffed FTE-month means being short one full-time employee for one month/)).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "6-mo understaffing" })).toBeInTheDocument();
     expect(screen.getByText("Sales")).toBeInTheDocument();
     expect(screen.getByText("Sales · Account Executive")).toBeInTheDocument();
     expect(screen.getAllByText("Not available").length).toBeGreaterThan(0);

@@ -24,8 +24,8 @@ function observedPoints(points: OverviewHistoricalTrend[], max: number) {
 function ForecastChart({ months }: { months: OverviewForecastMonth[] }) {
   const max = Math.max(...months.map((item) => Math.max(item.expected_fte, item.staffing_target)), 1) * 1.04;
   return <figure className="chart-card overview-chart" aria-labelledby="overview-forecast-heading">
-    <figcaption><p className="section-kicker">Forward-looking baseline</p><h2 id="overview-forecast-heading">Six-month staffing trajectory</h2><p>Baseline expected FTE versus staffing target. This is a forecast, not observed history.</p></figcaption>
-    <svg viewBox="0 0 340 154" role="img" aria-label="Six-month baseline workforce forecast">
+    <figcaption><p className="section-kicker">Baseline planning forecast</p><h2 id="overview-forecast-heading">Demo planning staffing trajectory</h2><p>Synthetic baseline expected FTE versus staffing target for the fixed demo planning horizon, not a current forecast.</p></figcaption>
+    <svg viewBox="0 0 340 154" role="img" aria-label="Synthetic demo planning workforce forecast">
       <line x1="24" y1="126" x2="320" y2="126" className="chart-axis" />
       <line x1="24" y1="22" x2="24" y2="126" className="chart-axis" />
       <polyline points={forecastPoints(months, "staffing_target", max)} className="chart-line target" />
@@ -64,22 +64,24 @@ export default function Overview({ onOpenDecisionLab }: { onOpenDecisionLab: () 
   }, []);
 
   if (error) return <main className="app-shell"><p className="error" role="alert">{error}</p></main>;
-  if (!overview) return <main className="app-shell" aria-busy="true"><p className="loading" aria-live="polite">Loading workforce analytics from the production baseline…</p></main>;
+  if (!overview) return <main className="app-shell" aria-busy="true"><p className="loading" aria-live="polite">Loading synthetic demo workforce analytics…</p></main>;
 
   const recentPeriod = `${month(overview.recent_historical_start_month, true)}–${month(overview.recent_historical_end_month, true)}`;
+  const demoPlanningPeriod = `${month(overview.forecast_months[0].month, true)}–${month(overview.forecast_months[overview.forecast_months.length - 1].month, true)}`;
   return <main className="app-shell overview-shell">
     <header className="hero overview-hero">
-      <p className="eyebrow">Executive workforce overview</p>
+      <p className="eyebrow">Synthetic workforce demo overview</p>
       <h1>What changed, where risk is building, and what to do next.</h1>
-      <p>Observed through {month(overview.observation_date, true)}. The forward view is the persisted six-month baseline from {month(overview.next_planning_month, true)}.</p>
+      <p>Observed through {month(overview.observation_date, true)}. This synthetic baseline planning forecast covers the {demoPlanningPeriod} demo planning horizon; it is not a current or upcoming forecast.</p>
     </header>
 
     <section className="kpi-grid" aria-label="Workforce key performance indicators">
-      <article className="kpi-card"><p>Current observed FTE</p><strong>{oneDecimal.format(overview.current_total_fte)}</strong><span>as of {month(overview.observation_date, true)}</span></article>
-      <article className="kpi-card"><p>Next planning target</p><strong>{oneDecimal.format(overview.next_planning_target)}</strong><span>{month(overview.next_planning_month, true)}</span></article>
-      <article className="kpi-card"><p>Current staffing gap</p><strong>{oneDecimal.format(overview.current_staffing_gap)}</strong><span>FTE to next target</span></article>
-      <article className="kpi-card emphasis"><p>Six-month understaffing</p><strong>{oneDecimal.format(overview.six_month_understaffed_fte_months)}</strong><span>baseline FTE-months</span></article>
+      <article className="kpi-card"><p>Observed demo FTE</p><strong>{oneDecimal.format(overview.current_total_fte)}</strong><span>as of {month(overview.observation_date, true)}</span></article>
+      <article className="kpi-card"><p>Demo-horizon opening target</p><strong>{oneDecimal.format(overview.next_planning_target)}</strong><span>{month(overview.next_planning_month, true)}</span></article>
+      <article className="kpi-card"><p>Baseline opening gap</p><strong>{oneDecimal.format(overview.current_staffing_gap)}</strong><span>FTE to opening target</span></article>
+      <article className="kpi-card emphasis"><p>Demo-horizon understaffing</p><strong>{oneDecimal.format(overview.six_month_understaffed_fte_months)}</strong><span>baseline FTE-months</span></article>
     </section>
+    <p className="fte-definition"><strong>About FTE-months:</strong> 1 understaffed FTE-month means being short one full-time employee for one month. Example: 2 FTE short for 3 months = 6 FTE-months. Lower is better.</p>
 
     <section className="overview-grid">
       <ForecastChart months={overview.forecast_months} />
@@ -97,9 +99,9 @@ export default function Overview({ onOpenDecisionLab }: { onOpenDecisionLab: () 
 
     <section className="overview-grid lower-overview-grid">
       <section className="table-panel" aria-labelledby="future-risk-heading">
-        <p className="section-kicker">Forward-looking risk</p><h2 id="future-risk-heading">Departments concentrating baseline understaffing</h2>
-        <p className="helper">Ranked by cumulative six-month baseline understaffed FTE-months.</p>
-        <table><thead><tr><th>Department</th><th>6-mo risk</th><th>Month 6 gap</th><th>Recent attrition</th></tr></thead><tbody>{overview.department_risks.map((item) => <tr key={item.department}><td>{item.department}</td><td><span className="gap-value">{oneDecimal.format(item.total_understaffed_fte_months)}</span></td><td>{oneDecimal.format(item.end_of_horizon_shortage)}</td><td>{percent(item.recent_attrition_rate)}</td></tr>)}</tbody></table>
+        <p className="section-kicker">Baseline planning forecast</p><h2 id="future-risk-heading">Departments with baseline demo-horizon understaffing</h2>
+        <p className="helper">Ranked by cumulative demo-horizon understaffed FTE-months.</p>
+        <table><thead><tr><th>Department</th><th>6-mo understaffing</th><th>End-of-horizon gap</th><th>Recent attrition</th></tr></thead><tbody>{overview.department_risks.map((item) => <tr key={item.department}><td>{item.department}</td><td><span className="gap-value">{oneDecimal.format(item.total_understaffed_fte_months)}</span></td><td>{oneDecimal.format(item.end_of_horizon_shortage)}</td><td>{percent(item.recent_attrition_rate)}</td></tr>)}</tbody></table>
         <button type="button" className="overview-cta" onClick={onOpenDecisionLab}>Model this in Decision Lab</button>
       </section>
       <section className="table-panel" aria-labelledby="lead-time-heading">
@@ -109,6 +111,6 @@ export default function Overview({ onOpenDecisionLab }: { onOpenDecisionLab: () 
       </section>
     </section>
 
-    <section className="overview-grid observed-grid"><ObservedTrend history={overview.historical_trend} /><section className="explain-panel" aria-labelledby="decision-lab-heading"><p className="section-kicker">Decision path</p><h2 id="decision-lab-heading">Turn the baseline into a constrained plan</h2><p>Decision Lab starts from the same persisted baseline. Adjust transient staffing assumptions, planning-period incremental workforce budget, and monthly recruiting capacity; then compare the resulting optimized plan.</p><button type="button" onClick={onOpenDecisionLab}>Open Decision Lab</button><p className="model-limit">The optimizer minimizes understaffed FTE-months. It does not infer business priority, revenue impact, or role criticality.</p></section></section>
+    <section className="overview-grid observed-grid"><ObservedTrend history={overview.historical_trend} /><section className="explain-panel" aria-labelledby="decision-lab-heading"><p className="section-kicker">Decision path</p><h2 id="decision-lab-heading">Turn the baseline into a constrained plan</h2><p>Decision Lab starts from the same persisted synthetic baseline. Adjust transient staffing assumptions, planning-period incremental workforce budget, and monthly recruiting capacity; then compare the resulting optimized plan.</p><button type="button" onClick={onOpenDecisionLab}>Open Decision Lab</button><p className="model-limit">The optimizer minimizes understaffed FTE-months. It does not infer business priority, revenue impact, or role criticality.</p></section></section>
   </main>;
 }

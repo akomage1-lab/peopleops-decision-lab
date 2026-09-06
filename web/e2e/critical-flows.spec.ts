@@ -4,7 +4,7 @@ async function openDecisionLab(page: Page) {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "What changed, where risk is building, and what to do next." })).toBeVisible();
   await page.getByRole("button", { name: "Decision Lab", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Where are we heading?" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "What does this fixed simulation show?" })).toBeVisible();
 }
 
 test("Flow A: Overview displays seeded metrics and opens Decision Lab", async ({ page }) => {
@@ -15,7 +15,7 @@ test("Flow A: Overview displays seeded metrics and opens Decision Lab", async ({
   await expect(metrics.getByText("117.6", { exact: true })).toBeVisible();
   await expect(page.getByRole("row", { name: /Sales 47\.5 10\.4 2\.5%/ })).toBeVisible();
   await page.getByRole("button", { name: "Model this in Decision Lab" }).click();
-  await expect(page.getByRole("heading", { name: "Where are we heading?" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "What does this fixed simulation show?" })).toBeVisible();
 });
 
 test("Flow B: changed scenario compares, then reset restores persisted input", async ({ page }) => {
@@ -48,4 +48,12 @@ test("Flow D: invalid input has an understandable error and no optimization", as
   await page.getByRole("button", { name: "Run Scenario", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("below 100%");
   await expect(page.getByRole("heading", { name: "Starts and arrivals" })).toHaveCount(0);
+});
+
+test("Flow E: mobile navigation keeps synthetic demo provenance visible", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.goto("/");
+  await expect(page.getByText("· Synthetic demo data", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Overview", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Decision Lab", exact: true })).toBeVisible();
 });
