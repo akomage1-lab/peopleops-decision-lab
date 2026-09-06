@@ -23,6 +23,7 @@ from .optimization_service import (
     forecast_production_scenario,
     optimize_production_workforce,
 )
+from .overview_service import production_workforce_overview
 from .schemas import (
     DepartmentMetricResponse,
     DepartmentForecastMonthResponse,
@@ -43,7 +44,12 @@ from .schemas import (
     RoleForecastProvenanceResponse,
     ScenarioResponse,
     WorkforceHistoryPointResponse,
+    WorkforceOverviewResponse,
     WorkforceSummaryResponse,
+    OverviewDepartmentRiskResponse,
+    OverviewForecastMonthResponse,
+    OverviewHistoricalTrendResponse,
+    OverviewHiringLeadTimeResponse,
 )
 from .service import optimize_record
 
@@ -124,6 +130,34 @@ def create_app() -> FastAPI:
             DepartmentMetricResponse(**metric.__dict__)
             for metric in workforce_summary(session).departments
         ]
+
+    @app.get("/api/workforce/overview", response_model=WorkforceOverviewResponse)
+    def get_workforce_overview(
+        session: Session = Depends(get_session),
+    ) -> WorkforceOverviewResponse:
+        try:
+            overview = production_workforce_overview(session)
+        except (ValueError, ForecastInputError) as error:
+            raise HTTPException(status_code=422, detail=str(error))
+        return WorkforceOverviewResponse(
+            generated_at=overview.generated_at,
+            observation_date=overview.observation_date,
+            next_planning_month=overview.next_planning_month,
+            recent_historical_start_month=overview.recent_historical_start_month,
+            recent_historical_end_month=overview.recent_historical_end_month,
+            current_total_fte=overview.current_total_fte,
+            next_planning_target=overview.next_planning_target,
+            current_staffing_gap=overview.current_staffing_gap,
+            six_month_understaffed_fte_months=overview.six_month_understaffed_fte_months,
+            recent_hires=overview.recent_hires,
+            recent_exits=overview.recent_exits,
+            recent_attrition_rate=overview.recent_attrition_rate,
+            organization_median_time_to_fill_days=overview.organization_median_time_to_fill_days,
+            forecast_months=[OverviewForecastMonthResponse(**item.__dict__) for item in overview.forecast_months],
+            historical_trend=[OverviewHistoricalTrendResponse(**item.__dict__) for item in overview.historical_trend],
+            department_risks=[OverviewDepartmentRiskResponse(**item.__dict__) for item in overview.department_risks],
+            slowest_filling_roles=[OverviewHiringLeadTimeResponse(**item.__dict__) for item in overview.slowest_filling_roles],
+        )
 
     @app.get("/api/workforce/forecast", response_model=ProductionForecastResponse)
     def get_production_forecast(

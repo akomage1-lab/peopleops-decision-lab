@@ -294,3 +294,57 @@ class ProductionScenarioForecastResponse(BaseModel):
     department_months: List[ProductionOptimizationDepartmentMonthResponse]
     organization_months: List[ProductionOptimizationOrganizationMonthResponse]
     total_understaffed_fte_months: float
+
+
+class OverviewForecastMonthResponse(BaseModel):
+    month: date
+    expected_fte: float
+    staffing_target: float
+    staffing_shortage: float
+
+
+class OverviewHistoricalTrendResponse(BaseModel):
+    month: date
+    total_fte: float
+    hires: int
+    exits: int
+
+
+class OverviewDepartmentRiskResponse(BaseModel):
+    department: str
+    current_fte: float
+    next_planning_target: float
+    current_staffing_gap: float
+    total_understaffed_fte_months: float
+    end_of_horizon_shortage: float
+    recent_attrition_rate: Optional[float]
+    recent_exits: int
+    recent_hires: int
+
+
+class OverviewHiringLeadTimeResponse(BaseModel):
+    department: str
+    role: str
+    completed_cycles: int
+    average_days: Optional[float]
+    median_days: Optional[float]
+
+
+class WorkforceOverviewResponse(BaseModel):
+    generated_at: datetime
+    observation_date: date
+    next_planning_month: date
+    recent_historical_start_month: date
+    recent_historical_end_month: date
+    current_total_fte: float
+    next_planning_target: float
+    current_staffing_gap: float
+    six_month_understaffed_fte_months: float
+    recent_hires: int
+    recent_exits: int
+    recent_attrition_rate: Optional[float]
+    organization_median_time_to_fill_days: Optional[float]
+    forecast_months: List[OverviewForecastMonthResponse]
+    historical_trend: List[OverviewHistoricalTrendResponse]
+    department_risks: List[OverviewDepartmentRiskResponse]
+    slowest_filling_roles: List[OverviewHiringLeadTimeResponse]

@@ -53,6 +53,10 @@ M5 adapts the same persisted M3/M4 inputs into the unchanged M1 two-pass optimiz
 
 M6 adds the transient planning workflow: persisted baseline, editable scenario, authoritative scenario forecast, production optimization, three-way comparison, and deterministic explainability. See [the Decision Lab contract](docs/M6_DECISION_LAB.md) and [the canonical demo flow](docs/M6_DEMO_FLOW.md).
 
+## M7 Executive Workforce Analytics
+
+M7 adds a compact executive Overview before the Decision Lab. `GET /api/workforce/overview` composes authoritative M3 observed analytics and the persisted M4 baseline forecast into current position, six-month risk concentration, recent workforce flow, historical hiring-speed evidence, and clearly separated observed and forecast visuals. See [the M7 executive analytics contract](docs/M7_EXECUTIVE_ANALYTICS.md).
+
 ## Limitations and assumptions
 
 - The horizon is fixed to six months, and all inputs are synthetic aggregate expectations.

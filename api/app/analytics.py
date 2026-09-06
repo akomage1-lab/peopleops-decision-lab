@@ -61,6 +61,15 @@ class HiringLeadTime:
     median_days: Optional[float]
 
 
+@dataclass(frozen=True)
+class HiringLeadTimeBreakdown:
+    department: str
+    role: str
+    completed_cycles: int
+    average_days: Optional[float]
+    median_days: Optional[float]
+
+
 def _facts(session: Session, start_month: date, end_month: date) -> List[WorkforceMonthlyFactRecord]:
     return list(session.scalars(
         select(WorkforceMonthlyFactRecord)
@@ -85,6 +94,29 @@ def hiring_lead_time(
     if not durations:
         return HiringLeadTime(0, None, None)
     return HiringLeadTime(len(durations), sum(durations) / len(durations), float(median(durations)))
+
+
+def hiring_lead_time_breakdown(session: Session) -> Sequence[HiringLeadTimeBreakdown]:
+    """Return historical completed-cycle lead-time evidence by aggregate role."""
+    cycles = list(session.scalars(
+        select(CompletedHiringCycleRecord)
+        .join(CompletedHiringCycleRecord.role)
+        .options(joinedload(CompletedHiringCycleRecord.role).joinedload(WorkforceRoleRecord.department))
+    ))
+    durations_by_role: Dict[tuple[str, str], List[int]] = {}
+    for cycle in cycles:
+        key = (cycle.role.department.name, cycle.role.name)
+        durations_by_role.setdefault(key, []).append((cycle.started_on - cycle.opened_on).days)
+    return tuple(sorted((
+        HiringLeadTimeBreakdown(
+            department=department,
+            role=role,
+            completed_cycles=len(durations),
+            average_days=sum(durations) / len(durations),
+            median_days=float(median(durations)),
+        )
+        for (department, role), durations in durations_by_role.items()
+    ), key=lambda item: (-item.median_days if item.median_days is not None else 0, item.department, item.role)))
 
 
 def workforce_summary(

@@ -54,6 +54,60 @@ export interface ProductionForecast {
   total_understaffed_fte_months: number;
 }
 
+export interface OverviewForecastMonth {
+  month: string;
+  expected_fte: number;
+  staffing_target: number;
+  staffing_shortage: number;
+}
+
+export interface OverviewHistoricalTrend {
+  month: string;
+  total_fte: number;
+  hires: number;
+  exits: number;
+}
+
+export interface OverviewDepartmentRisk {
+  department: string;
+  current_fte: number;
+  next_planning_target: number;
+  current_staffing_gap: number;
+  total_understaffed_fte_months: number;
+  end_of_horizon_shortage: number;
+  recent_attrition_rate: number | null;
+  recent_exits: number;
+  recent_hires: number;
+}
+
+export interface OverviewHiringLeadTime {
+  department: string;
+  role: string;
+  completed_cycles: number;
+  average_days: number | null;
+  median_days: number | null;
+}
+
+export interface WorkforceOverview {
+  generated_at: string;
+  observation_date: string;
+  next_planning_month: string;
+  recent_historical_start_month: string;
+  recent_historical_end_month: string;
+  current_total_fte: number;
+  next_planning_target: number;
+  current_staffing_gap: number;
+  six_month_understaffed_fte_months: number;
+  recent_hires: number;
+  recent_exits: number;
+  recent_attrition_rate: number | null;
+  organization_median_time_to_fill_days: number | null;
+  forecast_months: OverviewForecastMonth[];
+  historical_trend: OverviewHistoricalTrend[];
+  department_risks: OverviewDepartmentRisk[];
+  slowest_filling_roles: OverviewHiringLeadTime[];
+}
+
 export interface ScenarioRoleOverride {
   role_id: number;
   annual_expected_attrition_rate: number;
@@ -124,6 +178,10 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
 
 export function fetchProductionForecast(): Promise<ProductionForecast> {
   return requestJson<ProductionForecast>("/api/workforce/forecast");
+}
+
+export function fetchWorkforceOverview(): Promise<WorkforceOverview> {
+  return requestJson<WorkforceOverview>("/api/workforce/overview");
 }
 
 export function forecastScenario(roleOverrides: ScenarioRoleOverride[]): Promise<ScenarioForecast> {
