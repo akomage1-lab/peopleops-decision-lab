@@ -2,11 +2,19 @@
 
 from __future__ import annotations
 
+import io
+from pathlib import Path
+
 import pytest
+from alembic import command
+from alembic.config import Config
 from fastapi.testclient import TestClient
 
 from api.app.database import normalize_database_url
 from api.app.main import LOCAL_FRONTEND_ORIGINS, cors_origins_from_environment, create_app
+
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_m9_normalizes_standard_hosted_postgresql_urls() -> None:
@@ -21,6 +29,17 @@ def test_m9_normalizes_standard_hosted_postgresql_urls() -> None:
     assert normalize_database_url("postgresql+psycopg:///peopleops_decision_lab") == (
         "postgresql+psycopg:///peopleops_decision_lab"
     )
+
+
+def test_m9_alembic_uses_psycopg_for_standard_hosted_postgresql_url(monkeypatch) -> None:
+    hosted_url = "postgresql://user:password@ep-example.us-east-2.aws.neon.tech/app?sslmode=require"
+    config = Config(str(ROOT / "alembic.ini"), output_buffer=io.StringIO())
+    config.set_main_option("script_location", str(ROOT / "api" / "alembic"))
+    monkeypatch.setenv("DATABASE_URL", hosted_url)
+
+    command.upgrade(config, "head", sql=True)
+
+    assert config.get_main_option("sqlalchemy.url") == normalize_database_url(hosted_url)
 
 
 def test_m9_development_cors_defaults_to_explicit_local_origins(monkeypatch) -> None:

@@ -7,12 +7,15 @@ import os
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from api.app.database import DEFAULT_DATABASE_URL
+from api.app.database import DEFAULT_DATABASE_URL, normalize_database_url
 from api.app.models import Base
 
 
 config = context.config
-config.set_main_option("sqlalchemy.url", os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL))
+config.set_main_option(
+    "sqlalchemy.url",
+    normalize_database_url(os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL)),
+)
 target_metadata = Base.metadata
 
 
