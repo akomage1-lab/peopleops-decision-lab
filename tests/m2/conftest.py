@@ -20,7 +20,7 @@ from api.seed import seed_database
 
 TEST_DATABASE_URL = os.getenv(
     "M2_TEST_DATABASE_URL",
-    "postgresql+psycopg://wilmar@localhost:5432/peopleops_decision_lab_test",
+    "postgresql+psycopg:///peopleops_decision_lab_test",
 )
 ROOT = Path(__file__).resolve().parents[2]
 

@@ -1,7 +1,8 @@
-"""Typed public request and response contracts for the M2 walking skeleton."""
+"""Typed public request and response contracts for the M2/M3 API surface."""
 
 from __future__ import annotations
 
+from datetime import date
 from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -73,3 +74,35 @@ class OptimizeResponse(BaseModel):
     incremental_workforce_spend_used: float
     recommendations: List[RecommendationResponse]
     solver_status: SolverStatusResponse
+
+
+class DepartmentMetricResponse(BaseModel):
+    department: str
+    current_fte: float
+    staffing_target: float
+    staffing_gap: float
+    hires: int
+    exits: int
+    attrition_rate: Optional[float]
+
+
+class WorkforceSummaryResponse(BaseModel):
+    as_of_month: date
+    historical_start_month: date
+    historical_end_month: date
+    current_total_fte: float
+    total_staffing_target: float
+    total_staffing_gap: float
+    hires: int
+    exits: int
+    attrition_rate: Optional[float]
+    average_hiring_lead_time_days: Optional[float]
+    median_hiring_lead_time_days: Optional[float]
+    departments: List[DepartmentMetricResponse]
+
+
+class WorkforceHistoryPointResponse(BaseModel):
+    month: date
+    total_fte: float
+    hires: int
+    exits: int

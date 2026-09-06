@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from datetime import date
+from typing import Optional
+
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -9,15 +12,23 @@ from sqlalchemy.orm import Session, selectinload
 from peopleops.models import InputValidationError
 from peopleops.optimizer import SolverFailure
 
+from .analytics import workforce_history, workforce_summary
 from .database import get_session
 from .models import ScenarioRecord
-from .schemas import OptimizeRequest, OptimizeResponse, ScenarioResponse
+from .schemas import (
+    DepartmentMetricResponse,
+    OptimizeRequest,
+    OptimizeResponse,
+    ScenarioResponse,
+    WorkforceHistoryPointResponse,
+    WorkforceSummaryResponse,
+)
 from .service import optimize_record
 
 
 def create_app() -> FastAPI:
     """Create the deliberately small M2 HTTP surface."""
-    app = FastAPI(title="PeopleOps Decision Lab", version="0.2.0")
+    app = FastAPI(title="PeopleOps Decision Lab", version="0.3.0")
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -55,6 +66,42 @@ def create_app() -> FastAPI:
             )
         except InputValidationError:
             raise HTTPException(status_code=500, detail="Persisted scenario data is invalid.")
+
+    @app.get("/api/workforce/summary", response_model=WorkforceSummaryResponse)
+    def get_workforce_summary(
+        start_month: Optional[date] = None,
+        end_month: Optional[date] = None,
+        session: Session = Depends(get_session),
+    ) -> WorkforceSummaryResponse:
+        try:
+            summary = workforce_summary(session, start_month, end_month)
+        except ValueError as error:
+            raise HTTPException(status_code=400, detail=str(error))
+        return WorkforceSummaryResponse(
+            as_of_month=summary.as_of_month,
+            historical_start_month=summary.historical_start_month,
+            historical_end_month=summary.historical_end_month,
+            current_total_fte=summary.current_total_fte,
+            total_staffing_target=summary.total_staffing_target,
+            total_staffing_gap=summary.total_staffing_gap,
+            hires=summary.hires,
+            exits=summary.exits,
+            attrition_rate=summary.attrition_rate,
+            average_hiring_lead_time_days=summary.average_hiring_lead_time_days,
+            median_hiring_lead_time_days=summary.median_hiring_lead_time_days,
+            departments=[DepartmentMetricResponse(**metric.__dict__) for metric in summary.departments],
+        )
+
+    @app.get("/api/workforce/history", response_model=list[WorkforceHistoryPointResponse])
+    def get_workforce_history(session: Session = Depends(get_session)) -> list[WorkforceHistoryPointResponse]:
+        return [WorkforceHistoryPointResponse(**point.__dict__) for point in workforce_history(session)]
+
+    @app.get("/api/departments", response_model=list[DepartmentMetricResponse])
+    def get_departments(session: Session = Depends(get_session)) -> list[DepartmentMetricResponse]:
+        return [
+            DepartmentMetricResponse(**metric.__dict__)
+            for metric in workforce_summary(session).departments
+        ]
 
     return app
 

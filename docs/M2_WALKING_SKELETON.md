@@ -39,7 +39,7 @@ python3 -m venv .venv
 .venv/bin/python -m api.seed
 ```
 
-The seed is deterministic and idempotent. It replaces only scenario ID 1 and its three aggregate role rows with the M1-demo-derived scenario.
+The seed is deterministic and idempotent. It recreates scenario ID 1 and its three M2 aggregate role rows, plus the separate M3 aggregate demo organization described in [the demo data story](DEMO_DATA_STORY.md).
 
 ## Run the walking skeleton
 

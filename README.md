@@ -37,6 +37,10 @@ M2 adds one local end-to-end workflow: a seeded PostgreSQL scenario is read by F
 
 See [M2 walking-skeleton setup and run instructions](docs/M2_WALKING_SKELETON.md). Once PostgreSQL is running and migrated, start the API with `.venv/bin/uvicorn api.app.main:app --reload`, then run `npm run dev` in `web/` and open the shown local URL.
 
+## M3 data and metrics foundation
+
+M3 adds a deterministic, aggregate 12-month workforce history and six months of planning assumptions. Read-only APIs expose a workforce summary, historical trend, and department metrics; the M2 page deliberately remains unchanged. See [the M3 metric contract](docs/M3_METRICS.md) and [the synthetic demo-data story](docs/DEMO_DATA_STORY.md).
+
 ## Limitations and assumptions
 
 - The horizon is fixed to six months, and all inputs are synthetic aggregate expectations.
