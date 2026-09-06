@@ -70,6 +70,17 @@ function mockFetch(...responses: Response[]) {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe("M6 Decision Lab", () => {
+  it("keeps the initial loading surface accessible while the baseline request is pending", async () => {
+    let resolveBaseline: (response: Response) => void = () => undefined;
+    vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise<Response>((resolve) => { resolveBaseline = resolve; })));
+    const { container } = render(<App />);
+    expect(screen.getByText("Loading the persisted synthetic demo baseline…")).toBeInTheDocument();
+    expect(container.querySelector(".loading-surface .inline-spinner")).toBeInTheDocument();
+    expect(container.querySelector("main")?.getAttribute("aria-busy")).toBe("true");
+    resolveBaseline(jsonResponse(baseline));
+    expect(await screen.findByRole("heading", { name: "Baseline forecast: the unchanged demo plan" })).toBeInTheDocument();
+  });
+
   it("loads the real baseline presentation", async () => {
     mockFetch(jsonResponse(baseline));
     render(<App />);

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { analyzeConstraintSensitivity, ConstraintSensitivityResult, DepartmentMonth, fetchProductionForecast, forecastScenario, optimizeScenario, OrganizationMonth, ProductionForecast, ProductionOptimizationResult, RoleProvenance, ScenarioForecast, ScenarioRoleOverride } from "./api";
+import { LoadingSurface } from "./LoadingSurface";
 import "./styles.css";
 
 const DEFAULT_BUDGET = 150000;
@@ -77,7 +78,7 @@ export default function App() {
   async function runSensitivity() { if (!optimized || analyzingSensitivity) return; setSensitivityError(null); setAnalyzingSensitivity(true); try { setSensitivity(await analyzeConstraintSensitivity({ planning_period_incremental_workforce_budget: budget, monthly_recruiting_capacity: capacity, role_overrides: roleOverrides })); } catch (caught: unknown) { setSensitivityError(caught instanceof Error ? caught.message : "Constraint sensitivity analysis failed."); } finally { setAnalyzingSensitivity(false); } }
   function resetToBaseline() { setOverrides({}); setBudget(DEFAULT_BUDGET); setCapacity(DEFAULT_CAPACITY); clearResults(); setError(null); }
 
-  if (loading) return <main className="app-shell" aria-busy="true"><p className="loading" aria-live="polite">Loading the persisted synthetic demo baseline…</p></main>;
+  if (loading) return <main className="app-shell" aria-busy="true"><LoadingSurface message="Loading the persisted synthetic demo baseline…" /></main>;
   if (!baseline) return <main className="app-shell"><p className="error" role="alert">{error ?? "Synthetic demo baseline unavailable."}</p></main>;
 
   const baselineEnd = endMonth(baseline.organization_months);

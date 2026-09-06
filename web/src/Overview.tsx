@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { OverviewForecastMonth, OverviewHistoricalTrend, WorkforceOverview, fetchWorkforceOverview } from "./api";
+import { LoadingSurface } from "./LoadingSurface";
 import "./styles.css";
 
 const oneDecimal = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
@@ -29,7 +30,7 @@ export default function Overview({ onOpenDecisionLab }: { onOpenDecisionLab: () 
   const [error, setError] = useState<string | null>(null);
   useEffect(() => { fetchWorkforceOverview().then(setOverview).catch((caught: unknown) => setError(caught instanceof Error ? caught.message : "Unable to load workforce analytics.")); }, []);
   if (error) return <main className="app-shell"><p className="error" role="alert">{error}</p></main>;
-  if (!overview) return <main className="app-shell" aria-busy="true"><p className="loading" aria-live="polite">Loading synthetic demo workforce analytics…</p></main>;
+  if (!overview) return <main className="app-shell" aria-busy="true"><LoadingSurface message="Loading synthetic demo workforce analytics…" /></main>;
 
   const recentPeriod = `${month(overview.recent_historical_start_month, true)}–${month(overview.recent_historical_end_month, true)}`;
   const demoPlanningPeriod = `${month(overview.forecast_months[0].month, true)}–${month(overview.forecast_months[overview.forecast_months.length - 1].month, true)}`;

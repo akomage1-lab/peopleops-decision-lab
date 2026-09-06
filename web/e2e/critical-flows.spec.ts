@@ -61,6 +61,7 @@ test("Flow D: invalid input has an understandable error and no optimization", as
 });
 
 test("Flow E: mobile Decision Lab keeps provenance and company-wide constraints usable", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 375, height: 800 });
   await page.goto("/");
   await expect(page.getByText("· Synthetic demo data", { exact: true })).toBeVisible();
