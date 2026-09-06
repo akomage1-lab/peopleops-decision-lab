@@ -1,8 +1,97 @@
 # PeopleOps Decision Lab — Workforce Planning & Optimization
 
-PeopleOps Decision Lab is a small, aggregate workforce-planning proof of concept. Given department/role FTE, expected attrition, monthly targets, hiring lead times, in-flight arrivals, recruiting capacity, and a planning-period incremental workforce budget, it recommends hiring starts that minimize expected staffing shortages over six months.
+PeopleOps Decision Lab is a small, synthetic, aggregate workforce-planning proof of concept. It combines an executive Overview with a Decision Lab: managers can inspect current and projected staffing risk, then model transient assumptions and optimize in-horizon hiring starts.
 
-M1 exists to kill-test the math and decision logic before any UI, database, workflow, or individual employee data is introduced. It is deliberately not an HR CRUD application.
+It is deliberately not an HR CRUD application. It contains no employee or candidate records, authentication, payroll workflow, or real-world customer data.
+
+## Technology and architecture
+
+`PostgreSQL → SQLAlchemy/Alembic → FastAPI → existing M1 forecast/optimizer → React/Vite`
+
+- **Overview:** authoritative M3 observed analytics plus the persisted M4 six-month baseline forecast.
+- **Decision Lab:** transient role assumptions, planning-period incremental workforce budget, and monthly recruiting capacity sent to the existing M5/M1 optimizer.
+- **Data:** deterministic aggregate demo data, seeded locally; no personal data.
+
+The M1 objective first minimizes total understaffed FTE-months and then minimizes planning-period incremental workforce spend among plans within the documented numerical tolerance of that shortage optimum. Spend covers optimized-hire workforce/payroll cost incurred only after arrival inside the six-month planning horizon.
+
+## Supported environment
+
+- Python 3.9 or later (CI validates Python 3.9).
+- Node.js 20 or later for the frontend and browser checks.
+- PostgreSQL 16 (local PostgreSQL or the CI service image).
+
+Python dependencies are bounded in [pyproject.toml](pyproject.toml); frontend installs are pinned by [web/package-lock.json](web/package-lock.json) and should use `npm ci`.
+
+## Clean local setup
+
+Copy the safe local defaults if you need environment variables; do not commit a real `.env` file:
+
+```bash
+cp .env.example .env
+```
+
+Start a local PostgreSQL 16 server and create the development and test databases. The existing local setup documentation uses Homebrew:
+
+```bash
+brew install postgresql@16
+/opt/homebrew/opt/postgresql@16/bin/pg_ctl -D /opt/homebrew/var/postgresql@16 -l /tmp/peopleops-postgres.log start
+/opt/homebrew/opt/postgresql@16/bin/createdb peopleops_decision_lab
+/opt/homebrew/opt/postgresql@16/bin/createdb peopleops_decision_lab_test
+```
+
+From the repository root, install the backend, apply the schema, and seed deterministic demo data:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -e '.[dev]'
+.venv/bin/python -m alembic upgrade head
+.venv/bin/python -m api.seed
+```
+
+The seed is idempotent: it recreates the deterministic aggregate M3 organization and M2 scenario. For a clean schema rehearsal, run `.venv/bin/python -m alembic downgrade base` followed by `.venv/bin/python -m alembic upgrade head` before seeding.
+
+In separate terminals, run the API and frontend:
+
+```bash
+DATABASE_URL=postgresql+psycopg:///peopleops_decision_lab .venv/bin/python -m uvicorn api.app.main:app --host 127.0.0.1 --port 8000
+```
+
+```bash
+cd web
+npm ci
+npm run dev
+```
+
+Open `http://127.0.0.1:5173`. Vite proxies `/api` requests to FastAPI on port 8000.
+
+## Verification
+
+Run backend integration/regression tests against the separate test database:
+
+```bash
+M2_TEST_DATABASE_URL=postgresql+psycopg:///peopleops_decision_lab_test .venv/bin/python -m pytest -q
+```
+
+Run frontend tests, type checking, and production build:
+
+```bash
+cd web
+npm ci
+npm test
+npm run typecheck
+npm run build
+```
+
+For live browser acceptance, with PostgreSQL, API, and Vite already running, install Chromium once and execute the critical flows against the real backend:
+
+```bash
+cd web
+npx playwright install chromium
+npm run e2e
+```
+
+GitHub Actions runs the migration/seed/backend suite, frontend unit/type/build checks, and these live browser flows against PostgreSQL. See [M8 reliability notes](docs/M8_RELIABILITY.md).
 
 ## How the model works
 
@@ -33,7 +122,7 @@ The demo prints the six-month planning-period incremental workforce budget, base
 
 ## M2 walking skeleton
 
-M2 adds one local end-to-end workflow: a seeded PostgreSQL scenario is read by FastAPI, adapted into the unchanged M1 engine, and displayed in a React/Vite page. The only editable browser input is the planning-period incremental workforce budget; overrides are used for that optimization request only and are not saved.
+M2 introduced the local end-to-end backbone: a seeded PostgreSQL scenario is read by FastAPI, adapted into the unchanged M1 engine, and displayed in React/Vite. Later milestones expanded the browser Decision Lab with transient role assumptions, budget, and recruiting-capacity edits; no browser edits are persisted.
 
 See [M2 walking-skeleton setup and run instructions](docs/M2_WALKING_SKELETON.md). Once PostgreSQL is running and migrated, start the API with `.venv/bin/uvicorn api.app.main:app --reload`, then run `npm run dev` in `web/` and open the shown local URL.
 
@@ -56,6 +145,10 @@ M6 adds the transient planning workflow: persisted baseline, editable scenario, 
 ## M7 Executive Workforce Analytics
 
 M7 adds a compact executive Overview before the Decision Lab. `GET /api/workforce/overview` composes authoritative M3 observed analytics and the persisted M4 baseline forecast into current position, six-month risk concentration, recent workforce flow, historical hiring-speed evidence, and clearly separated observed and forecast visuals. See [the M7 executive analytics contract](docs/M7_EXECUTIVE_ANALYTICS.md).
+
+## M8 reliability and quality hardening
+
+M8 adds reproducible CI, deterministic browser acceptance coverage, safe database-failure handling, accessibility and responsive-layout checks, and public-repository configuration safeguards. See [the M8 reliability guide](docs/M8_RELIABILITY.md).
 
 ## Limitations and assumptions
 

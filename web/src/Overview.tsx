@@ -33,6 +33,7 @@ function ForecastChart({ months }: { months: OverviewForecastMonth[] }) {
       {months.map((row, index) => <text key={row.month} x={19 + index * 58} y="145" className="chart-label">{month(row.month)}</text>)}
     </svg>
     <div className="legend"><span><i className="legend-target" />Target</span><span><i className="legend-baseline" />Baseline expected FTE</span></div>
+    <div className="sr-only"><table><caption>Monthly baseline workforce forecast values</caption><thead><tr><th scope="col">Month</th><th scope="col">Expected FTE</th><th scope="col">Staffing target</th><th scope="col">Shortage</th></tr></thead><tbody>{months.map((item) => <tr key={item.month}><td>{month(item.month, true)}</td><td>{oneDecimal.format(item.expected_fte)}</td><td>{oneDecimal.format(item.staffing_target)}</td><td>{oneDecimal.format(item.staffing_shortage)}</td></tr>)}</tbody></table></div>
   </figure>;
 }
 
@@ -48,6 +49,7 @@ function ObservedTrend({ history }: { history: OverviewHistoricalTrend[] }) {
       {labels.map((row) => <text key={row.month} x={24 + (history.indexOf(row) * (history.length > 1 ? 296 / (history.length - 1) : 0)) - 7} y="145" className="chart-label">{month(row.month)}</text>)}
     </svg>
     <div className="legend"><span><i className="legend-observed" />Observed FTE</span></div>
+    <div className="sr-only"><table><caption>Monthly observed workforce FTE values</caption><thead><tr><th scope="col">Month</th><th scope="col">Observed FTE</th><th scope="col">Hires</th><th scope="col">Exits</th></tr></thead><tbody>{history.map((item) => <tr key={item.month}><td>{month(item.month, true)}</td><td>{oneDecimal.format(item.total_fte)}</td><td>{item.hires}</td><td>{item.exits}</td></tr>)}</tbody></table></div>
   </figure>;
 }
 
@@ -62,7 +64,7 @@ export default function Overview({ onOpenDecisionLab }: { onOpenDecisionLab: () 
   }, []);
 
   if (error) return <main className="app-shell"><p className="error" role="alert">{error}</p></main>;
-  if (!overview) return <main className="app-shell"><p className="loading">Loading workforce analytics from the production baseline…</p></main>;
+  if (!overview) return <main className="app-shell" aria-busy="true"><p className="loading" aria-live="polite">Loading workforce analytics from the production baseline…</p></main>;
 
   const recentPeriod = `${month(overview.recent_historical_start_month, true)}–${month(overview.recent_historical_end_month, true)}`;
   return <main className="app-shell overview-shell">

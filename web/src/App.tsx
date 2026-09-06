@@ -145,7 +145,7 @@ export default function App() {
     setError(null);
   }
 
-  if (loading) return <main className="app-shell"><p className="loading">Loading the persisted production baseline…</p></main>;
+  if (loading) return <main className="app-shell" aria-busy="true"><p className="loading" aria-live="polite">Loading the persisted production baseline…</p></main>;
   if (!baseline) return <main className="app-shell"><p className="error" role="alert">{error ?? "Production baseline unavailable."}</p></main>;
 
   const baselineEnd = endMonth(baseline.organization_months);

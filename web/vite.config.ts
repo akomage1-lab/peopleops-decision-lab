@@ -13,6 +13,7 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: "./src/test/setup.ts",
     pool: "forks",
-    fileParallelism: false
+    fileParallelism: false,
+    exclude: ["e2e/**", "**/node_modules/**"]
   }
 });

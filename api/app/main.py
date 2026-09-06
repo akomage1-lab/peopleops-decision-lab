@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+import logging
 from datetime import date
-from typing import Optional
+from typing import AsyncIterator, Optional
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 
 from peopleops.models import InputValidationError
@@ -54,9 +58,30 @@ from .schemas import (
 from .service import optimize_record
 
 
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    logger.info("PeopleOps Decision Lab API started")
+    yield
+
+
 def create_app() -> FastAPI:
-    """Create the deliberately small M2 HTTP surface."""
-    app = FastAPI(title="PeopleOps Decision Lab", version="0.3.0")
+    """Create the compact aggregate workforce-planning HTTP surface."""
+    app = FastAPI(
+        title="PeopleOps Decision Lab", version="0.3.0", debug=False, lifespan=lifespan
+    )
+
+    @app.exception_handler(SQLAlchemyError)
+    async def handle_database_error(
+        _request: Request, error: SQLAlchemyError
+    ) -> JSONResponse:
+        logger.error("Database request failed: %s", error.__class__.__name__)
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "The workforce data service is temporarily unavailable."},
+        )
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -87,12 +112,14 @@ def create_app() -> FastAPI:
             return optimize_record(
                 scenario, request.planning_period_incremental_workforce_budget
             )
-        except SolverFailure:
+        except SolverFailure as error:
+            logger.error("Seeded scenario optimization failed", exc_info=error)
             raise HTTPException(
                 status_code=503,
                 detail="The optimizer did not return a proven optimal plan.",
             )
-        except InputValidationError:
+        except InputValidationError as error:
+            logger.error("Persisted seeded scenario is invalid", exc_info=error)
             raise HTTPException(status_code=500, detail="Persisted scenario data is invalid.")
 
     @app.get("/api/workforce/summary", response_model=WorkforceSummaryResponse)
@@ -104,6 +131,7 @@ def create_app() -> FastAPI:
         try:
             summary = workforce_summary(session, start_month, end_month)
         except ValueError as error:
+            logger.warning("Workforce summary request rejected: %s", error)
             raise HTTPException(status_code=400, detail=str(error))
         return WorkforceSummaryResponse(
             as_of_month=summary.as_of_month,
@@ -138,6 +166,7 @@ def create_app() -> FastAPI:
         try:
             overview = production_workforce_overview(session)
         except (ValueError, ForecastInputError) as error:
+            logger.warning("Workforce overview request rejected: %s", error)
             raise HTTPException(status_code=422, detail=str(error))
         return WorkforceOverviewResponse(
             generated_at=overview.generated_at,
@@ -166,6 +195,7 @@ def create_app() -> FastAPI:
         try:
             forecast = production_baseline_forecast(session)
         except ForecastInputError as error:
+            logger.warning("Production forecast request rejected: %s", error)
             raise HTTPException(status_code=422, detail=str(error))
         return ProductionForecastResponse(
             generated_at=forecast.generated_at,
@@ -191,8 +221,10 @@ def create_app() -> FastAPI:
                 request.monthly_recruiting_capacity,
             )
         except ProductionOptimizationInputError as error:
+            logger.warning("Production optimization request rejected: %s", error)
             raise HTTPException(status_code=422, detail=str(error))
-        except ProductionOptimizationFailure:
+        except ProductionOptimizationFailure as error:
+            logger.error("Production optimization failed", exc_info=error)
             raise HTTPException(
                 status_code=503,
                 detail="The production optimizer did not return a proven optimal plan.",
@@ -261,6 +293,7 @@ def create_app() -> FastAPI:
         try:
             result = forecast_production_scenario(session, overrides)
         except ProductionOptimizationInputError as error:
+            logger.warning("Transient scenario forecast request rejected: %s", error)
             raise HTTPException(status_code=422, detail=str(error))
         return ProductionScenarioForecastResponse(
             generated_at=result.generated_at,
@@ -303,8 +336,10 @@ def create_app() -> FastAPI:
                 overrides,
             )
         except ProductionOptimizationInputError as error:
+            logger.warning("Transient scenario optimization request rejected: %s", error)
             raise HTTPException(status_code=422, detail=str(error))
-        except ProductionOptimizationFailure:
+        except ProductionOptimizationFailure as error:
+            logger.error("Transient scenario optimization failed", exc_info=error)
             raise HTTPException(
                 status_code=503,
                 detail="The production optimizer did not return a proven optimal plan.",
