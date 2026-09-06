@@ -2,7 +2,9 @@
 
 PeopleOps Decision Lab is a synthetic, aggregate workforce-planning demo. It helps a decision-maker see where a six-month staffing plan is at risk, test transient assumptions, and optimize constrained hiring starts without collecting employee, candidate, or payroll records.
 
-> **Live demo:** prepared for public deployment in M9.1; no public deployment has been made yet.
+> **Live demo:** [peopleops-decision-lab.vercel.app](https://peopleops-decision-lab.vercel.app)
+>
+> **Source:** [github.com/akomage1-lab/peopleops-decision-lab](https://github.com/akomage1-lab/peopleops-decision-lab)
 
 ## The decision it supports
 
@@ -23,7 +25,7 @@ flowchart LR
     Response --> Browser
 ```
 
-For public deployment, the same components map cleanly to Vercel (static Vite frontend), Railway (always-on FastAPI), and Neon (hosted PostgreSQL). The exact M9.2 procedure is in [the deployment runbook](docs/M9_DEPLOYMENT.md); M9.1 creates no cloud resources and performs no deployment.
+For public deployment, the same components map cleanly to Vercel (static Vite frontend), Railway (always-on FastAPI), and Neon (hosted PostgreSQL). The exact release procedure is in [the deployment runbook](docs/M9_DEPLOYMENT.md).
 
 ## How the planning model works
 
