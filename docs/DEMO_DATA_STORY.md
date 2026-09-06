@@ -19,5 +19,7 @@ The M3 organization is deterministic, hand-authored aggregate demo data. It is n
 - **High-cost, low-gap Security:** Security Engineer costs $21,000 per month but carries only a 0.5-FTE January gap.
 - **Lower-cost, substantial Sales need:** Sales Development Representative costs $7,500 per month and begins with a 4-FTE gap; Sales has the largest department gap at 5 FTE overall.
 - **Seasonal Support demand:** Support Specialist targets increase from 26 in January to 30 in May and June 2026, reflecting a deliberately simple seasonal service-demand pattern.
+- **Explicit future forecast assumptions:** Every role has a persisted annual expected attrition assumption for planning (separate from observed historical exits). Customer Support and Sales use 12%, Engineering and Marketing use 8%, Finance uses 2%, Operations uses 4%, and Security uses 3%.
+- **Known in-flight Support arrival:** Support Specialist has one in-flight hire arriving in January 2026. It is part of the planning assumptions, not an optimizer-selected hire.
 
 The seed is idempotent: it recreates these aggregate demo facts and assumptions on every run, so changes to the story require an intentional code/test/documentation update.

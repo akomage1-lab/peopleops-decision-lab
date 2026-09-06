@@ -30,6 +30,8 @@ class WorkforceRoleRecord(Base):
     __table_args__ = (
         UniqueConstraint("department_id", "name", name="uq_workforce_role_department_name"),
         CheckConstraint("monthly_loaded_cost >= 0", name="ck_workforce_role_cost_nonnegative"),
+        CheckConstraint("annual_expected_attrition_rate >= 0 AND annual_expected_attrition_rate < 1", name="ck_workforce_role_future_attrition"),
+        CheckConstraint("hiring_lead_time >= 0", name="ck_workforce_role_lead_time_nonnegative"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -38,6 +40,8 @@ class WorkforceRoleRecord(Base):
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     monthly_loaded_cost: Mapped[float] = mapped_column(Float, nullable=False)
+    annual_expected_attrition_rate: Mapped[float] = mapped_column(Float, nullable=False)
+    hiring_lead_time: Mapped[int] = mapped_column(Integer, nullable=False)
     department: Mapped[DepartmentRecord] = relationship(back_populates="roles")
     monthly_facts: Mapped[List["WorkforceMonthlyFactRecord"]] = relationship(
         back_populates="role", cascade="all, delete-orphan"

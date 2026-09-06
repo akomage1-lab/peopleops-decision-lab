@@ -105,7 +105,12 @@ def test_m3_database_constraints_reject_negative_and_duplicate_monthly_facts(ses
 def test_m3_zero_fte_denominator_returns_no_attrition_rate(session_factory) -> None:
     with session_factory() as session:
         department = DepartmentRecord(name="Zero Denominator Test")
-        role = WorkforceRoleRecord(name="Zero Role", monthly_loaded_cost=0)
+        role = WorkforceRoleRecord(
+            name="Zero Role",
+            monthly_loaded_cost=0,
+            annual_expected_attrition_rate=0.0,
+            hiring_lead_time=0,
+        )
         department.roles.append(role)
         session.add(department)
         session.flush()

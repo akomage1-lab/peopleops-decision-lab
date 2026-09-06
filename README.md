@@ -41,6 +41,10 @@ See [M2 walking-skeleton setup and run instructions](docs/M2_WALKING_SKELETON.md
 
 M3 adds a deterministic, aggregate 12-month workforce history and six months of planning assumptions. Read-only APIs expose a workforce summary, historical trend, and department metrics; the M2 page deliberately remains unchanged. See [the M3 metric contract](docs/M3_METRICS.md) and [the synthetic demo-data story](docs/DEMO_DATA_STORY.md).
 
+## M4 production forecast engine
+
+M4 adapts persisted aggregate workforce observations and explicit future assumptions into the unchanged M1 baseline forecast engine. `GET /api/workforce/forecast` returns typed role-month forecasts, additive department and organization aggregates, and the provenance needed to explain them. See [the M4 production forecast contract](docs/M4_PRODUCTION_FORECAST.md).
+
 ## Limitations and assumptions
 
 - The horizon is fixed to six months, and all inputs are synthetic aggregate expectations.

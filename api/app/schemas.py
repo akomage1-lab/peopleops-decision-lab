@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -106,3 +106,52 @@ class WorkforceHistoryPointResponse(BaseModel):
     total_fte: float
     hires: int
     exits: int
+
+
+class RoleForecastProvenanceResponse(BaseModel):
+    department: str
+    role: str
+    observation_date: date
+    starting_observed_fte: float
+    annual_expected_attrition_rate: float
+    staffing_targets: List[float]
+    in_flight_hires: List[int]
+
+
+class RoleForecastMonthResponse(BaseModel):
+    department: str
+    role: str
+    month: date
+    expected_fte_before_attrition: float
+    expected_attrition_loss: float
+    in_flight_hires_arriving: int
+    expected_fte: float
+    staffing_target: float
+    staffing_shortage: float
+    staffing_surplus: float
+
+
+class DepartmentForecastMonthResponse(BaseModel):
+    department: str
+    month: date
+    expected_fte: float
+    staffing_target: float
+    staffing_shortage: float
+
+
+class OrganizationForecastMonthResponse(BaseModel):
+    month: date
+    expected_fte: float
+    staffing_target: float
+    staffing_shortage: float
+
+
+class ProductionForecastResponse(BaseModel):
+    generated_at: datetime
+    model_version: str
+    planning_horizon_months: int
+    observation_date: date
+    role_provenance: List[RoleForecastProvenanceResponse]
+    role_months: List[RoleForecastMonthResponse]
+    department_months: List[DepartmentForecastMonthResponse]
+    organization_months: List[OrganizationForecastMonthResponse]

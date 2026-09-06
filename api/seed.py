@@ -48,6 +48,18 @@ DEMO_ROLE_SPECS = (
     ("Security", "Compliance Analyst", 3.0, 10_500.0, {}, {}, (3, 3, 3, 3, 3, 3)),
 )
 
+FUTURE_ATTRITION_RATES = {
+    "Engineering": 0.08, "Sales": 0.12, "Customer Support": 0.12,
+    "Product": 0.06, "Marketing": 0.08, "Finance": 0.02,
+    "Operations": 0.04, "Security": 0.03,
+}
+HIRING_LEAD_TIMES = {
+    ("Sales", "Account Executive"): 3,
+    ("Engineering", "Software Engineer"): 2,
+    ("Engineering", "DevOps Engineer"): 2,
+    ("Security", "Security Engineer"): 3,
+}
+
 
 def _seed_m2_scenario(session: Session) -> ScenarioRecord:
     scenario = session.scalar(select(ScenarioRecord).where(ScenarioRecord.id == SEED_SCENARIO_ID))
@@ -90,7 +102,12 @@ def _seed_m3_organization(session: Session) -> None:
             session.add(department)
             session.flush()
             departments[department_name] = department
-        role = WorkforceRoleRecord(name=role_name, monthly_loaded_cost=cost)
+        role = WorkforceRoleRecord(
+            name=role_name,
+            monthly_loaded_cost=cost,
+            annual_expected_attrition_rate=FUTURE_ATTRITION_RATES[department_name],
+            hiring_lead_time=HIRING_LEAD_TIMES.get((department_name, role_name), 1),
+        )
         department.roles.append(role)
         session.flush()
         role_records[(department_name, role_name)] = role

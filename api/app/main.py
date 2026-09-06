@@ -14,11 +14,17 @@ from peopleops.optimizer import SolverFailure
 
 from .analytics import workforce_history, workforce_summary
 from .database import get_session
+from .forecast_service import ForecastInputError, production_baseline_forecast
 from .models import ScenarioRecord
 from .schemas import (
     DepartmentMetricResponse,
+    DepartmentForecastMonthResponse,
     OptimizeRequest,
     OptimizeResponse,
+    OrganizationForecastMonthResponse,
+    ProductionForecastResponse,
+    RoleForecastMonthResponse,
+    RoleForecastProvenanceResponse,
     ScenarioResponse,
     WorkforceHistoryPointResponse,
     WorkforceSummaryResponse,
@@ -102,6 +108,25 @@ def create_app() -> FastAPI:
             DepartmentMetricResponse(**metric.__dict__)
             for metric in workforce_summary(session).departments
         ]
+
+    @app.get("/api/workforce/forecast", response_model=ProductionForecastResponse)
+    def get_production_forecast(
+        session: Session = Depends(get_session),
+    ) -> ProductionForecastResponse:
+        try:
+            forecast = production_baseline_forecast(session)
+        except ForecastInputError as error:
+            raise HTTPException(status_code=422, detail=str(error))
+        return ProductionForecastResponse(
+            generated_at=forecast.generated_at,
+            model_version=forecast.model_version,
+            planning_horizon_months=forecast.planning_horizon_months,
+            observation_date=forecast.observation_date,
+            role_provenance=[RoleForecastProvenanceResponse(**item.__dict__) for item in forecast.role_provenance],
+            role_months=[RoleForecastMonthResponse(**item.__dict__) for item in forecast.role_months],
+            department_months=[DepartmentForecastMonthResponse(**item.__dict__) for item in forecast.department_months],
+            organization_months=[OrganizationForecastMonthResponse(**item.__dict__) for item in forecast.organization_months],
+        )
 
     return app
 
