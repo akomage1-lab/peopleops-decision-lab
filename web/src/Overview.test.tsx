@@ -33,13 +33,16 @@ describe("M7 executive overview", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(overview)));
     render(<Overview onOpenDecisionLab={vi.fn()} />);
 
-    expect(await screen.findByRole("heading", { name: "What changed, where risk is building, and what to do next." })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Plan staffing shortfalls before they become hiring gaps." })).toBeInTheDocument();
     expect(screen.getByText("117.6")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Synthetic demo planning workforce forecast" })).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Observed workforce FTE history" })).toBeInTheDocument();
-    expect(screen.getByText(/Jan 2026–Jun 2026 demo planning horizon/)).toBeInTheDocument();
-    expect(screen.getByText(/1 understaffed FTE-month means being short one full-time employee for one month/)).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "6-mo understaffing" })).toBeInTheDocument();
+    expect(screen.getByText(/fixed baseline planning forecast covers/)).toBeInTheDocument();
+    expect(screen.getByText(/Find where staffing is projected to fall short/)).toBeInTheDocument();
+    expect(screen.getByText(/FTE means full-time equivalent/)).toBeInTheDocument();
+    expect(screen.getByText(/being 1 FTE below the staffing target for one month/)).toBeInTheDocument();
+    expect(screen.getByText(/Baseline planning forecast/)).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Total understaffing (FTE-months)" })).toBeInTheDocument();
     expect(screen.getByText("Sales")).toBeInTheDocument();
     expect(screen.getByText("Sales · Account Executive")).toBeInTheDocument();
     expect(screen.getAllByText("Not available").length).toBeGreaterThan(0);
@@ -50,7 +53,7 @@ describe("M7 executive overview", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(overview)));
     render(<Overview onOpenDecisionLab={onOpenDecisionLab} />);
 
-    await screen.findByRole("heading", { name: "Turn the baseline into a constrained plan" });
+    await screen.findByRole("heading", { name: "Turn the forecast into a constrained hiring plan" });
     fireEvent.click(screen.getByRole("button", { name: "Open Decision Lab" }));
     expect(onOpenDecisionLab).toHaveBeenCalledOnce();
   });
@@ -59,9 +62,10 @@ describe("M7 executive overview", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(overview)));
     render(<ProductApp />);
 
-    await screen.findByRole("heading", { name: "What changed, where risk is building, and what to do next." });
+    await screen.findByRole("heading", { name: "Plan staffing shortfalls before they become hiring gaps." });
     fireEvent.click(screen.getByRole("button", { name: "Decision Lab" }));
     expect(screen.getByRole("heading", { name: "Decision Lab loaded" })).toBeInTheDocument();
+    expect(screen.getByText("Portfolio demo — all company and workforce data shown here are synthetic.")).toBeInTheDocument();
   });
 
   it("renders a useful API failure state", async () => {

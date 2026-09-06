@@ -59,18 +59,27 @@ describe("M6 Decision Lab", () => {
   it("loads the real baseline presentation", async () => {
     mockFetch(jsonResponse(baseline));
     render(<App />);
-    expect(await screen.findByRole("heading", { name: "What does this fixed simulation show?" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Baseline forecast: the unchanged demo plan" })).toBeInTheDocument();
     expect(screen.getAllByText("117.6")).toHaveLength(2);
     expect(screen.getByLabelText("Annual expected attrition")).toHaveValue(12);
-    expect(screen.getByText(/Jan 2026–Jun 2026 demo planning horizon/)).toBeInTheDocument();
-    expect(screen.getByText(/1 understaffed FTE-month means being short one full-time employee for one month/)).toBeInTheDocument();
+    expect(screen.getByText(/fixed Jan 2026–Jun 2026 synthetic demo forecast/)).toBeInTheDocument();
+    expect(screen.getByText(/FTE means full-time equivalent/)).toBeInTheDocument();
+    expect(screen.getByText(/being 1 FTE below the staffing target for one month/)).toBeInTheDocument();
+    expect(screen.getByText(/This is a forecast.*not current staffing data/)).toBeInTheDocument();
+    expect(screen.getAllByText("Baseline forecast").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Your scenario").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Optimized plan").length).toBeGreaterThan(0);
+    expect(screen.getByText(/Estimated percentage of this role expected to leave over a year/)).toBeInTheDocument();
+    expect(screen.getByText(/staffing capacity you want this role to reach in each month/)).toBeInTheDocument();
+    expect(screen.getByText(/maximum added workforce spend available/)).toBeInTheDocument();
+    expect(screen.getByText(/maximum number of new hire starts/)).toBeInTheDocument();
     expect(screen.queryByText(/next 6 months/i)).not.toBeInTheDocument();
   });
 
   it("runs a changed transient scenario and displays the comparison", async () => {
     const fetchMock = mockFetch(jsonResponse(baseline), jsonResponse(scenario));
     render(<App />);
-    await screen.findByRole("heading", { name: "What does this fixed simulation show?" });
+    await screen.findByRole("heading", { name: "Baseline forecast: the unchanged demo plan" });
     fireEvent.change(screen.getByLabelText("Annual expected attrition"), { target: { value: "18" } });
     fireEvent.click(screen.getByRole("button", { name: "Run Scenario" }));
     expect(await screen.findByText("Scenario active")).toBeInTheDocument();
@@ -81,16 +90,23 @@ describe("M6 Decision Lab", () => {
   it("shows optimizer recommendations after the scenario run", async () => {
     const fetchMock = mockFetch(jsonResponse(baseline), jsonResponse(scenario), jsonResponse(optimized));
     render(<App />);
-    await screen.findByRole("heading", { name: "What does this fixed simulation show?" });
+    await screen.findByRole("heading", { name: "Baseline forecast: the unchanged demo plan" });
     fireEvent.click(screen.getByRole("button", { name: "Run Scenario" }));
     await screen.findByText("Scenario active");
     fireEvent.click(screen.getByRole("button", { name: "Optimize Scenario" }));
-    expect(await screen.findByRole("heading", { name: "Starts and arrivals" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Recommended hire starts and arrivals" })).toBeInTheDocument();
     expect(screen.getAllByText("Sales Development Representative").length).toBeGreaterThan(0);
     expect(fetchMock).toHaveBeenLastCalledWith("/api/workforce/scenario/optimize", expect.anything());
-    expect(screen.getByText(/feasible combinations of integer hire starts/)).toBeInTheDocument();
+    expect(screen.getByText("Decision audit")).toBeInTheDocument();
+    expect(screen.getByText("Goal")).toBeInTheDocument();
+    expect(screen.getByText("Constraints used")).toBeInTheDocument();
+    expect(screen.getByText("Result")).toBeInTheDocument();
+    expect(screen.getByText(/131.2 → 111.6 total understaffing/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Optimization status: Optimal/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/no feasible plan with lower total understaffing/)).toBeInTheDocument();
+    expect(screen.getByText(/Among plans tied on understaffing/)).toBeInTheDocument();
     expect(screen.getByText(/globally optimized combination/)).toBeInTheDocument();
-    expect(screen.getByText(/not a business-priority ranking/)).toBeInTheDocument();
+    expect(screen.getByText(/not as the organization’s final hiring-priority decision/)).toBeInTheDocument();
     expect(screen.queryByText(/receives the largest displayed allocation because/)).not.toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "Jan 2026" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "Feb 2026" })).toBeInTheDocument();
@@ -99,7 +115,7 @@ describe("M6 Decision Lab", () => {
   it("resets changed inputs to the persisted baseline assumptions", async () => {
     mockFetch(jsonResponse(baseline));
     render(<App />);
-    await screen.findByRole("heading", { name: "What does this fixed simulation show?" });
+    await screen.findByRole("heading", { name: "Baseline forecast: the unchanged demo plan" });
     const attrition = screen.getByLabelText("Annual expected attrition");
     fireEvent.change(attrition, { target: { value: "18" } });
     expect(attrition).toHaveValue(18);
@@ -113,7 +129,7 @@ describe("M6 Decision Lab", () => {
   it("shows only actual active role edits and removes a reverted no-op", async () => {
     mockFetch(jsonResponse(baseline));
     render(<App />);
-    await screen.findByRole("heading", { name: "What does this fixed simulation show?" });
+    await screen.findByRole("heading", { name: "Baseline forecast: the unchanged demo plan" });
     fireEvent.change(screen.getByLabelText("Annual expected attrition"), { target: { value: "18" } });
     fireEvent.change(screen.getByLabelText("Role to edit"), { target: { value: "6" } });
     fireEvent.change(screen.getByLabelText("Annual expected attrition"), { target: { value: "10" } });
@@ -128,7 +144,7 @@ describe("M6 Decision Lab", () => {
   it("shows useful validation and API error states", async () => {
     mockFetch(jsonResponse(baseline), jsonResponse({ detail: "Scenario service unavailable." }, 503));
     render(<App />);
-    await screen.findByRole("heading", { name: "What does this fixed simulation show?" });
+    await screen.findByRole("heading", { name: "Baseline forecast: the unchanged demo plan" });
     fireEvent.change(screen.getByLabelText("Annual expected attrition"), { target: { value: "100" } });
     fireEvent.click(screen.getByRole("button", { name: "Run Scenario" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("below 100%");
