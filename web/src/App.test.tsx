@@ -111,6 +111,22 @@ describe("M6 Decision Lab", () => {
     expect(screen.queryByText(/next 6 months/i)).not.toBeInTheDocument();
   });
 
+  it("communicates that the scenario is being recalculated", async () => {
+    let resolveScenario: (response: Response) => void = () => undefined;
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValueOnce(jsonResponse(baseline));
+    fetchMock.mockReturnValueOnce(new Promise<Response>((resolve) => { resolveScenario = resolve; }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+    await screen.findByRole("heading", { name: "Baseline forecast: the unchanged demo plan" });
+    fireEvent.change(screen.getByLabelText("Annual expected attrition"), { target: { value: "18" } });
+    fireEvent.click(screen.getByRole("button", { name: "Run Scenario" }));
+    expect(screen.getByRole("button", { name: "Recalculating scenario…" })).toBeDisabled();
+    expect(screen.getAllByText("Recalculating scenario assumptions…").length).toBeGreaterThan(0);
+    resolveScenario(jsonResponse(scenario));
+    expect(await screen.findByText("Scenario active")).toBeInTheDocument();
+  });
+
   it("runs a changed transient scenario and displays the comparison", async () => {
     const fetchMock = mockFetch(jsonResponse(baseline), jsonResponse(scenario));
     render(<App />);
@@ -118,7 +134,7 @@ describe("M6 Decision Lab", () => {
     fireEvent.change(screen.getByLabelText("Annual expected attrition"), { target: { value: "18" } });
     fireEvent.click(screen.getByRole("button", { name: "Run Scenario" }));
     expect(await screen.findByText("Scenario active")).toBeInTheDocument();
-    expect(screen.getByText("131.2")).toBeInTheDocument();
+    expect(screen.getAllByText("131.2").length).toBeGreaterThan(0);
     expect(fetchMock).toHaveBeenLastCalledWith("/api/workforce/scenario/forecast", expect.objectContaining({ body: expect.stringContaining("0.18") }));
   });
 
@@ -130,6 +146,9 @@ describe("M6 Decision Lab", () => {
     await screen.findByText("Scenario active");
     fireEvent.click(screen.getByRole("button", { name: "Optimize Scenario" }));
     expect(await screen.findByRole("heading", { name: "Recommended hire starts and arrivals" })).toBeInTheDocument();
+    expect(screen.getByRole("complementary", { name: "Current plan summary" })).toHaveTextContent("Optimized plan ready");
+    expect(screen.getByRole("complementary", { name: "Current plan summary" })).toHaveTextContent("Spend $150,000 / $150,000");
+    expect(screen.getByText("Optimized vs scenario")).toBeInTheDocument();
     expect(screen.getAllByText("Sales Development Representative").length).toBeGreaterThan(0);
     expect(fetchMock).toHaveBeenLastCalledWith("/api/workforce/scenario/optimize", expect.anything());
     expect(screen.getByText("Decision audit")).toBeInTheDocument();
@@ -147,6 +166,24 @@ describe("M6 Decision Lab", () => {
     expect(screen.getByRole("cell", { name: "Jan 2026" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "Feb 2026" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Analyze constraint sensitivity" })).toBeInTheDocument();
+  });
+
+  it("communicates that the optimized plan is being built", async () => {
+    let resolveOptimization: (response: Response) => void = () => undefined;
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValueOnce(jsonResponse(baseline));
+    fetchMock.mockResolvedValueOnce(jsonResponse(scenario));
+    fetchMock.mockReturnValueOnce(new Promise<Response>((resolve) => { resolveOptimization = resolve; }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+    await screen.findByRole("heading", { name: "Baseline forecast: the unchanged demo plan" });
+    fireEvent.click(screen.getByRole("button", { name: "Run Scenario" }));
+    await screen.findByText("Scenario active");
+    fireEvent.click(screen.getByRole("button", { name: "Optimize Scenario" }));
+    expect(screen.getByRole("button", { name: "Building optimized plan…" })).toBeDisabled();
+    expect(screen.getAllByText("Building the optimized hiring plan…").length).toBeGreaterThan(0);
+    resolveOptimization(jsonResponse(optimized));
+    expect(await screen.findByRole("heading", { name: "Recommended hire starts and arrivals" })).toBeInTheDocument();
   });
 
   it("runs bounded sensitivity with the current transient constraints and preserves an optimization on failure", async () => {
