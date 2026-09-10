@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { OverviewForecastMonth, OverviewHistoricalTrend, WorkforceOverview, fetchWorkforceOverview } from "./api";
 import { LoadingSurface } from "./LoadingSurface";
+import { WorkflowRibbon } from "./WorkflowRibbon";
 import "./styles.css";
 
 const oneDecimal = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
@@ -39,6 +40,7 @@ export default function Overview({ onOpenDecisionLab }: { onOpenDecisionLab: () 
   const finalPlanningMonth = month(overview.forecast_months[overview.forecast_months.length - 1].month, true);
   return <main className="app-shell overview-shell">
     <header className="hero overview-hero"><p className="section-label">Workforce planning</p><h1>Plan staffing shortfalls before they become hiring gaps.</h1><p className="purpose-statement">Find where staffing is projected to fall short, test what-if assumptions, and build a hiring plan that reduces shortages within a budget.</p><p className="horizon-note">This portfolio demo uses synthetic company and workforce data. Observed data ends {observationMonth}; the fixed baseline planning forecast covers {demoPlanningPeriod}.</p></header>
+    <WorkflowRibbon active="forecast" />
     <section className="kpi-grid" aria-label="Workforce key performance indicators"><article className="kpi-card"><p>Observed demo staffing (FTE)</p><strong>{oneDecimal.format(overview.current_total_fte)}</strong><span>as of {observationMonth}</span></article><article className="kpi-card"><p>{openingPlanningMonth} target staffing (FTE)</p><strong>{oneDecimal.format(overview.next_planning_target)}</strong><span>opening month of the forecast</span></article><article className="kpi-card"><p>{openingPlanningMonth} opening gap (FTE)</p><strong>{oneDecimal.format(overview.current_staffing_gap)}</strong><span>below the opening target</span></article><article className="kpi-card emphasis"><p>Total {demoPlanningPeriod} understaffing</p><strong>{oneDecimal.format(overview.six_month_understaffed_fte_months)}</strong><span>FTE-months in the baseline forecast</span></article></section>
     <FteExplainer />
     <section className="overview-grid"><ForecastChart months={overview.forecast_months} /><section className="insight-card" aria-labelledby="operating-signals-heading"><h2 id="operating-signals-heading">Observed demo hiring context</h2><dl className="signal-list"><div><dt>Observed hires ({recentPeriod})</dt><dd>{wholeNumber.format(overview.recent_hires)}</dd></div><div><dt>Observed exits ({recentPeriod})</dt><dd>{wholeNumber.format(overview.recent_exits)}</dd></div><div><dt>Observed attrition ({recentPeriod})</dt><dd>{percent(overview.recent_attrition_rate)}</dd></div><div><dt>Median completed-cycle time-to-fill</dt><dd>{overview.organization_median_time_to_fill_days === null ? "Not available" : `${wholeNumber.format(overview.organization_median_time_to_fill_days)} days`}</dd></div></dl><p className="model-limit">Attrition and time-to-fill are historical measurements. They are not a causal diagnosis or a recommendation by themselves.</p></section></section>

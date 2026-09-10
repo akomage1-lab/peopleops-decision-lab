@@ -79,6 +79,7 @@ describe("M6 Decision Lab", () => {
     expect(container.querySelector("main")?.getAttribute("aria-busy")).toBe("true");
     resolveBaseline(jsonResponse(baseline));
     expect(await screen.findByRole("heading", { name: "Baseline forecast: the unchanged demo plan" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Decision workflow" })).toBeInTheDocument();
   });
 
   it("loads the real baseline presentation", async () => {
@@ -182,6 +183,8 @@ describe("M6 Decision Lab", () => {
     fireEvent.click(screen.getByRole("button", { name: "Analyze constraint sensitivity" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Sensitivity service unavailable.");
     expect(screen.getByRole("heading", { name: "Recommended hire starts and arrivals" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Optimized hiring plan" })).toBeInTheDocument();
+    expect(screen.getByText(/Constraint-respecting result: monthly recruiting capacity/)).toBeInTheDocument();
   });
 
   it("resets changed inputs to the persisted baseline assumptions", async () => {

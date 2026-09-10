@@ -180,3 +180,40 @@ table { border-collapse: collapse; font-size: .86rem; margin-top: 13px; text-ali
 @media (max-width: 900px) { .content-grid, .lower-grid { grid-template-columns: 1fr; }.summary-grid { grid-template-columns: 1fr; }.state-guide, .model-boundary > div { grid-template-columns: 1fr; }.baseline-panel { align-items: flex-start; flex-direction: column; gap: 13px; }.baseline-stat { text-align: left; } }
 @media (max-width: 900px) { .kpi-grid, .overview-grid { grid-template-columns: repeat(2, 1fr); }.kpi-card:nth-child(2) { border-right: 0; }.kpi-card:nth-child(-n+2) { border-bottom: 1px solid #e5eaf1; }.overview-grid { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .product-nav-inner { align-items: center; flex-wrap: wrap; gap: 6px 10px; padding: 12px 16px; }.product-brand { font-size: .78rem; }.demo-indicator { font-size: .6rem; margin-left: 4px; white-space: nowrap; }.product-nav nav { margin-left: auto; }.product-nav .nav-link { padding: 6px 7px; }.provenance-banner { font-size: .75rem; padding: 8px 16px; }.app-shell { padding: 32px 16px 54px; }.scenario-panel, .decision-panel, .table-panel, .explain-panel, .recommendation-panel, .sensitivity-panel { padding: 18px; }.model-boundary { padding: 18px; }.action-row { flex-direction: column; }.panel-heading { flex-wrap: wrap; } .kpi-grid { grid-template-columns: 1fr; }.kpi-card, .kpi-card:nth-child(2) { border-bottom: 1px solid #e5eaf1; border-right: 0; }.kpi-card:last-child { border-bottom: 0; } table { font-size: .75rem; } th, td { padding: 8px 4px; } }
+
+/* Premium product-polish layer: a compact workflow cue and a clearer visual
+   order for the numbers and surfaces that drive the decision. */
+.product-nav { box-shadow: 0 1px 0 rgb(255 255 255 / 8%), 0 7px 18px rgb(23 41 72 / 9%); }
+.product-brand { letter-spacing: -.02em; }
+.workflow-ribbon { align-items: stretch; background: rgb(255 255 255 / 88%); border: 1px solid #dbe3ef; border-radius: 13px; box-shadow: 0 6px 18px rgb(23 41 72 / 4%); display: grid; gap: 3px; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: 0 0 28px; padding: 6px; }
+.workflow-step { align-items: center; border-radius: 9px; color: #7a8799; display: flex; font-size: .72rem; font-weight: 750; gap: 7px; justify-content: center; min-height: 38px; position: relative; transition: background-color 180ms ease-out, color 180ms ease-out; }
+.workflow-step:not(:last-child)::after { background: #d9e1ed; content: ""; height: 1px; position: absolute; right: -3px; top: 50%; width: 7px; }
+.workflow-step-index { align-items: center; border: 1px solid #cbd6e4; border-radius: 50%; display: inline-flex; font-size: .64rem; height: 19px; justify-content: center; width: 19px; }
+.workflow-step.is-active { background: #eef5ff; color: #23569d; }
+.workflow-step.is-active .workflow-step-index { background: #2d67b7; border-color: #2d67b7; color: #fff; }
+.workflow-step-scenario.is-active { background: #fff7ed; color: #9a5619; }.workflow-step-scenario.is-active .workflow-step-index { background: #c47728; border-color: #c47728; }
+.workflow-step-optimize.is-active, .workflow-step-audit.is-active, .workflow-step-sensitivity.is-active { background: #f0f9f3; color: #1d7040; }.workflow-step-optimize.is-active .workflow-step-index, .workflow-step-audit.is-active .workflow-step-index, .workflow-step-sensitivity.is-active .workflow-step-index { background: #338357; border-color: #338357; }
+.hero { position: relative; }
+.hero::after { background: #4b7dca; border-radius: 99px; content: ""; display: block; height: 3px; margin-top: 22px; width: 42px; }
+.overview-hero::after { background: #6a4c9c; }
+.chart-card { background: #fff; padding: 20px; }
+.chart-card figcaption { padding-bottom: 3px; }
+.chart-card svg { background: #f8fafc; border: 1px solid #e6ecf4; border-radius: 10px; margin-top: 14px; max-width: none; padding: 8px 12px 2px; }
+.chart-card .legend { padding-left: 2px; }
+.decision-panel .summary-grid { margin-top: 22px; }
+.decision-summary { animation: result-reveal 300ms ease-out both; background: #f4fbf6; border: 1px solid #c9e0d0; border-left: 4px solid #3f8d5d; border-radius: 16px; box-shadow: 0 12px 30px rgb(23 41 72 / 7%); margin-top: 28px; padding: 25px 27px 21px; }
+.decision-summary-heading { border-bottom: 1px solid #d9eadf; padding-bottom: 15px; }
+.decision-summary-heading h2 { color: #1d4f33; font-size: 1.28rem; margin: 5px 0 7px; }
+.decision-summary-heading p:last-child { color: #4d6b59; font-size: .86rem; line-height: 1.5; margin: 0; max-width: 760px; }
+.decision-summary-grid { display: grid; gap: 11px; grid-template-columns: repeat(3, 1fr); margin-top: 17px; }
+.decision-summary-grid > div { background: rgb(255 255 255 / 78%); border: 1px solid #dcece1; border-radius: 10px; padding: 13px 14px; }
+.decision-summary-grid span, .decision-summary-grid small { color: #607b69; display: block; font-size: .72rem; line-height: 1.35; }
+.decision-summary-grid strong { color: #1d7040; display: block; font-size: 1.48rem; letter-spacing: -.035em; margin: 6px 0 2px; }
+.decision-summary-check { align-items: center; color: #37664a; display: flex; font-size: .78rem; font-weight: 750; gap: 7px; margin: 17px 0 0; }
+.decision-summary-check span { align-items: center; background: #dcefe2; border-radius: 50%; color: #257043; display: inline-flex; height: 19px; justify-content: center; width: 19px; }
+.explain-panel:has(.audit-block) .audit-block { border-top: 1px solid #dcebe1; padding-top: 2px; }
+.recommendation-panel table { background: rgb(255 255 255 / 65%); }
+.sensitivity-panel { border-top: 3px solid #8399b7; }
+.sensitivity-takeaway { border-left-color: #5b78a9; box-shadow: 0 4px 12px rgb(23 41 72 / 4%); }
+@media (max-width: 560px) { .workflow-ribbon { gap: 1px; margin-bottom: 23px; padding: 4px; }.workflow-step { font-size: .64rem; gap: 4px; min-height: 34px; }.workflow-step-index { display: none; }.workflow-step:not(:last-child)::after { right: -2px; width: 4px; }.hero::after { margin-top: 18px; }.decision-summary { padding: 21px 18px 18px; }.decision-summary-grid { grid-template-columns: 1fr; }.decision-summary-grid > div { padding: 11px 13px; }.decision-summary-grid strong { font-size: 1.35rem; } }
+@media (prefers-reduced-motion: reduce) { .workflow-step, .decision-summary, .series-enter, .summary-card-scenario, .summary-card-optimized { animation: none !important; transform: none !important; transition: none !important; } }
